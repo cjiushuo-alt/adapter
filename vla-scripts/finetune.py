@@ -4,10 +4,12 @@ finetune.py
 Fine-tunes Qwen2.5-0.5B via LoRA.
 """
 
+import hashlib
+import json
 import os
 import time
 from collections import deque
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, Optional, Tuple, Type
 import torch.nn.functional as F
@@ -19,11 +21,12 @@ import tqdm
 from accelerate import PartialState
 from huggingface_hub import HfApi, snapshot_download
 from peft import LoraConfig, PeftModel, get_peft_model
+from safetensors import safe_open
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import MultiStepLR, CosineAnnealingLR
 from torch.utils.data import DataLoader
-from transformers import AutoConfig, AutoImageProcessor, AutoModelForVision2Seq, AutoProcessor
+from transformers import AutoConfig, AutoImageProcessor, AutoModelForVision2Seq, AutoProcessor, set_seed
 from transformers.modeling_outputs import CausalLMOutputWithPast
 import wandb
 
@@ -88,6 +91,7 @@ class FinetuneConfig:
 
     # Training configuration
     batch_size: int = 8                              # Batch size per device (total batch size = batch_size * num GPUs)
+    seed: int = 7                                    # Shared experiment seed (PyTorch/NumPy/Python/TensorFlow)
     learning_rate: float = 5e-4                      # Learning rate
     lr_warmup_steps: int = 0.1                       # Number of steps to warm up learning rate (from 10% to 100%)
     num_steps_before_decay: int = 100000             # Number of steps before LR decays by 10x
@@ -115,9 +119,16 @@ class FinetuneConfig:
     # Full Finetune
     use_fz: bool = False                             # If True, uses LoRA fine-tuning
 
+    # Shared frozen vision backbone
+    shared_vision_checkpoint: Optional[Path] = None
+    freeze_shared_vision: bool = False
+    exclude_vision_from_lora: bool = False
+    verify_shared_vision_sha256: bool = True
+
     # Logging
     wandb_entity: str = "your-wandb-entity"          # Name of WandB entity
     wandb_project: str = "your-wandb-project"        # Name of WandB project
+    wandb_mode: str = "offline"
     run_id_note: Optional[str] = None                # Extra note to add to end of run ID for logging
     run_id_override: Optional[str] = None            # Optional string to override the run ID with
     wandb_log_freq: int = 10                         # WandB logging frequency in steps
@@ -126,6 +137,104 @@ class FinetuneConfig:
     use_pro_version: bool = True                             # the version number
     phase: str = "Training"
     # fmt: on
+
+
+def _resolve_model_safetensors(checkpoint: Path) -> Path:
+    checkpoint = Path(checkpoint).expanduser().resolve()
+    model_path = checkpoint / "model.safetensors" if checkpoint.is_dir() else checkpoint
+    if not model_path.is_file():
+        raise FileNotFoundError(f"Shared vision checkpoint not found: {model_path}")
+    return model_path
+
+
+def _vision_backbone(model: nn.Module) -> nn.Module:
+    """Return the underlying vision backbone through DDP/PEFT wrappers."""
+    if hasattr(model, "module"):
+        model = model.module
+    if hasattr(model, "get_base_model"):
+        model = model.get_base_model()
+    return model.vision_backbone
+
+
+def _tensor_sha256_update(digest, name: str, tensor: torch.Tensor) -> None:
+    tensor = tensor.detach().cpu().contiguous()
+    digest.update(name.encode("utf-8"))
+    digest.update(str(tensor.dtype).encode("ascii"))
+    digest.update(str(tuple(tensor.shape)).encode("ascii"))
+    digest.update(tensor.view(torch.uint8).numpy().tobytes())
+
+
+def vision_backbone_sha256(model: nn.Module) -> str:
+    digest = hashlib.sha256()
+    for name, tensor in sorted(_vision_backbone(model).state_dict().items()):
+        _tensor_sha256_update(digest, name, tensor)
+    return digest.hexdigest()
+
+
+def load_shared_vision_backbone(model: nn.Module, checkpoint: Path) -> str:
+    """Load only vision_backbone.* tensors from a canonical HF checkpoint."""
+    model_path = _resolve_model_safetensors(checkpoint)
+    vision_state = {}
+    source_digest = hashlib.sha256()
+    with safe_open(model_path, framework="pt", device="cpu") as handle:
+        for key in sorted(handle.keys()):
+            if not key.startswith("vision_backbone."):
+                continue
+            short_key = key.removeprefix("vision_backbone.")
+            tensor = handle.get_tensor(key)
+            vision_state[short_key] = tensor
+            _tensor_sha256_update(source_digest, short_key, tensor)
+    if not vision_state:
+        raise ValueError(f"No vision_backbone tensors found in {model_path}")
+    _vision_backbone(model).load_state_dict(vision_state, strict=True)
+    loaded_digest = vision_backbone_sha256(model)
+    expected_digest = source_digest.hexdigest()
+    if loaded_digest != expected_digest:
+        raise RuntimeError(
+            f"Shared vision load verification failed: source={expected_digest}, loaded={loaded_digest}"
+        )
+    print(
+        f"Loaded canonical shared vision backbone from {model_path} "
+        f"({len(vision_state)} tensors, sha256={loaded_digest})"
+    )
+    return loaded_digest
+
+
+def freeze_shared_vision_backbone(model: nn.Module) -> None:
+    backbone = _vision_backbone(model)
+    backbone.requires_grad_(False)
+    backbone.eval()
+
+
+def assert_shared_vision_contract(model: nn.Module, expected_sha256: Optional[str] = None) -> None:
+    vision_parameters = [
+        (name, parameter)
+        for name, parameter in model.named_parameters()
+        if "vision_backbone" in name
+    ]
+    trainable = [name for name, parameter in vision_parameters if parameter.requires_grad]
+    vision_lora = [name for name, _ in vision_parameters if ".lora_A." in name or ".lora_B." in name]
+    if trainable:
+        raise RuntimeError(f"Shared vision contains trainable parameters: {trainable[:10]}")
+    if vision_lora:
+        raise RuntimeError(f"Shared vision contains task-specific LoRA modules: {vision_lora[:10]}")
+    if expected_sha256 is not None:
+        actual_sha256 = vision_backbone_sha256(model)
+        if actual_sha256 != expected_sha256:
+            raise RuntimeError(
+                f"Shared vision changed: expected={expected_sha256}, actual={actual_sha256}"
+            )
+
+
+def non_vision_linear_module_names(model: nn.Module) -> list[str]:
+    names = [
+        name
+        for name, module in model.named_modules()
+        if isinstance(module, nn.Linear) and "vision_backbone" not in name
+    ]
+    if not names:
+        raise RuntimeError("No non-vision linear modules found for LoRA injection")
+    return names
 
 
 
@@ -503,7 +612,7 @@ def save_training_checkpoint(
     train_dataset,
     distributed_state,
     new_state_dict,
-    
+    expected_vision_sha256=None,
 ) -> None:
     """
     Save all training checkpoints including model components, LoRA adapter, and dataset statistics.
@@ -523,6 +632,10 @@ def save_training_checkpoint(
     Returns:
         None.
     """
+    if expected_vision_sha256 is not None:
+        freeze_shared_vision_backbone(vla)
+        assert_shared_vision_contract(vla, expected_vision_sha256)
+
     # Determine checkpoint paths and naming
     if cfg.save_latest_checkpoint_only:
         checkpoint_dir = run_dir
@@ -592,6 +705,10 @@ def save_training_checkpoint(
 
         merged_vla = PeftModel.from_pretrained(base_vla, adapter_dir)
         merged_vla = merged_vla.merge_and_unload()
+
+        if expected_vision_sha256 is not None:
+            freeze_shared_vision_backbone(merged_vla)
+            assert_shared_vision_contract(merged_vla, expected_vision_sha256)
 
         if distributed_state.is_main_process:
             merged_vla.save_pretrained(checkpoint_dir)
@@ -708,6 +825,20 @@ def finetune(cfg: FinetuneConfig) -> None:
     assert not (cfg.use_l1_regression and cfg.use_diffusion), (
         "Cannot do both L1 regression and diffusion. Please pick one of them!"
     )
+    if cfg.shared_vision_checkpoint is not None:
+        if not cfg.use_lora:
+            raise ValueError("shared_vision_checkpoint requires use_lora=True")
+        if not cfg.freeze_shared_vision or not cfg.exclude_vision_from_lora:
+            raise ValueError(
+                "Shared vision training requires both freeze_shared_vision=True and "
+                "exclude_vision_from_lora=True"
+            )
+        if cfg.use_film or cfg.use_fz:
+            raise ValueError("Shared vision training is incompatible with use_film/use_fz")
+    if cfg.wandb_mode not in {"online", "offline", "disabled"}:
+        raise ValueError(f"Unsupported wandb_mode: {cfg.wandb_mode}")
+
+    set_seed(cfg.seed)
 
     # Trim trailing forward slash ('/') in VLA path if it exists
     cfg.config_file_path = cfg.config_file_path.rstrip("/")
@@ -728,7 +859,20 @@ def finetune(cfg: FinetuneConfig) -> None:
 
     # Initialize wandb logging
     if distributed_state.is_main_process:
-        wandb.init(project=cfg.wandb_project, name=f"ft+{run_id}", mode="offline")
+        wandb_config = {
+            key: str(value) if isinstance(value, Path) else value
+            for key, value in asdict(cfg).items()
+        }
+        wandb_kwargs = {
+            "project": cfg.wandb_project,
+            "name": f"ft+{run_id}",
+            "mode": cfg.wandb_mode,
+            "config": wandb_config,
+            "dir": str(run_dir),
+        }
+        if cfg.wandb_entity and cfg.wandb_entity != "your-wandb-entity":
+            wandb_kwargs["entity"] = cfg.wandb_entity
+        wandb.init(**wandb_kwargs)
 
     # Print detected constants
     print(
@@ -777,13 +921,16 @@ def finetune(cfg: FinetuneConfig) -> None:
     if cfg.use_minivlm:
         hf_token = ''
         if 'prism-qwen25-extra-dinosiglip-224px-0_5b' in cfg.vlm_path:
-            
-            vlm = load(cfg.vlm_path, hf_token=hf_token, load_for_training=True)
+            # This object is only a source for RAW_STATE_DICT; all trainable modules
+            # are created below in the HF VLA. Build the LLM from config and then
+            # load the local Prismatic checkpoint, avoiding a redundant Qwen Hub
+            # weight download (and making local/offline launches reproducible).
+            vlm = load(cfg.vlm_path, hf_token=hf_token, load_for_training=False)
         else:
             vlm = load_vla(
                 cfg.vlm_path,
                 hf_token=hf_token,
-                load_for_training=True,
+                load_for_training=False,
                 )
         config = AutoConfig.from_pretrained("pretrained_models/configs/config.json")
         vla = AutoModelForVision2Seq.from_config(config, torch_dtype=torch.bfloat16).to(device_id)  # Create a new model with configuration, the parameters are randomly initialized
@@ -827,20 +974,54 @@ def finetune(cfg: FinetuneConfig) -> None:
     # Set number of images in VLA input
     vla.vision_backbone.set_num_images_in_input(cfg.num_images_in_input)
 
+    shared_vision_sha256 = None
+    if cfg.shared_vision_checkpoint is not None:
+        shared_vision_sha256 = load_shared_vision_backbone(vla, cfg.shared_vision_checkpoint)
+        freeze_shared_vision_backbone(vla)
+
+        # The merged checkpoints are reconstructed from RAW_STATE_DICT. Replace its
+        # vision tensors too, otherwise checkpoint merging would restore the original
+        # task-specific vision tower instead of the canonical Spatial-Pro tower.
+        for name, tensor in _vision_backbone(vla).state_dict().items():
+            RAW_STATE_DICT[f"vision_backbone.{name}"] = tensor.detach().cpu().clone()
+
+        if distributed_state.is_main_process:
+            metadata = {
+                "source_checkpoint": str(_resolve_model_safetensors(cfg.shared_vision_checkpoint)),
+                "vision_backbone_sha256": shared_vision_sha256,
+                "frozen": True,
+                "vision_lora_excluded": True,
+            }
+            with open(run_dir / "shared_vision_metadata.json", "w", encoding="utf-8") as handle:
+                json.dump(metadata, handle, indent=2)
+
     # vla.set_version(cfg.version)
 
     if cfg.use_lora:
+        target_modules = (
+            non_vision_linear_module_names(vla)
+            if cfg.exclude_vision_from_lora
+            else "all-linear"
+        )
+        if cfg.exclude_vision_from_lora:
+            print(f"Injecting LoRA into {len(target_modules)} non-vision linear modules")
         lora_config = LoraConfig(
             r=cfg.lora_rank,
             lora_alpha= 2 * cfg.lora_rank,
             lora_dropout=cfg.lora_dropout,
-            target_modules="all-linear",
+            target_modules=target_modules,
             init_lora_weights="gaussian",
         )
         vla = get_peft_model(vla, lora_config)
         for name, param in vla.named_parameters():
             if "action_queries" in name:
                 param.requires_grad = True
+        if cfg.freeze_shared_vision:
+            freeze_shared_vision_backbone(vla)
+            assert_shared_vision_contract(
+                vla,
+                shared_vision_sha256 if cfg.verify_shared_vision_sha256 else None,
+            )
         vla.print_trainable_parameters()
 
     else:
@@ -867,6 +1048,12 @@ def finetune(cfg: FinetuneConfig) -> None:
 
     # Wrap VLA with DDP
     vla = wrap_ddp(vla, device_id, find_unused=True)
+    if cfg.freeze_shared_vision:
+        freeze_shared_vision_backbone(vla)
+        assert_shared_vision_contract(
+            vla,
+            shared_vision_sha256 if cfg.verify_shared_vision_sha256 else None,
+        )
 
     # If applicable, instantiate proprio projector
     if cfg.use_proprio:
@@ -1015,6 +1202,8 @@ def finetune(cfg: FinetuneConfig) -> None:
     # Start training
     with tqdm.tqdm(total=cfg.max_steps, leave=False) as progress:
         vla.train()
+        if cfg.freeze_shared_vision:
+            freeze_shared_vision_backbone(vla)
         optimizer.zero_grad()
         for batch_idx, batch in enumerate(dataloader):
             # Compute training metrics and loss
@@ -1046,25 +1235,37 @@ def finetune(cfg: FinetuneConfig) -> None:
                 if metric_name in recent_metrics:
                     recent_metrics[metric_name].append(value)
 
-            # Compute gradient step index
-            gradient_step_idx = batch_idx // cfg.grad_accumulation_steps
+            # A gradient step is complete only after all accumulation microbatches.
+            # Keeping this explicit prevents duplicate checkpoint/validation calls
+            # and prevents max_steps from stopping mid-accumulation.
+            is_optimizer_step = (batch_idx + 1) % cfg.grad_accumulation_steps == 0
+            gradient_step_idx = (batch_idx + 1) // cfg.grad_accumulation_steps
+            optimizer_step_number = batch_idx // cfg.grad_accumulation_steps + 1
 
             # Compute smoothened train metrics
             smoothened_metrics = compute_smoothened_metrics(recent_metrics)
 
             # Push Metrics to W&B (every wandb_log_freq gradient steps)
             log_step = gradient_step_idx if not cfg.resume else cfg.resume_step + gradient_step_idx
-            if distributed_state.is_main_process and log_step % cfg.wandb_log_freq == 0:
+            if (
+                distributed_state.is_main_process
+                and is_optimizer_step
+                and log_step % cfg.wandb_log_freq == 0
+            ):
                 log_metrics_to_wandb(smoothened_metrics, "VLA Train", log_step, wandb)
 
             # [If applicable] Linearly warm up learning rate from 10% to 100% of original
             if cfg.lr_warmup_steps > 0:
-                lr_progress = min((gradient_step_idx + 1) / cfg.lr_warmup_steps, 1.0)  # Cap at 1.0
+                lr_progress = min(optimizer_step_number / cfg.lr_warmup_steps, 1.0)  # Cap at 1.0
                 current_lr = original_lr * (0.1 + 0.9 * lr_progress)
                 for param_group in optimizer.param_groups:
                     param_group["lr"] = current_lr
 
-            if distributed_state.is_main_process and gradient_step_idx % cfg.wandb_log_freq == 0:
+            if (
+                distributed_state.is_main_process
+                and is_optimizer_step
+                and gradient_step_idx % cfg.wandb_log_freq == 0
+            ):
                 # Log the learning rate
                 # Make sure to do this AFTER any learning rate modifications (e.g., warmup/decay)
                 wandb.log(
@@ -1075,14 +1276,14 @@ def finetune(cfg: FinetuneConfig) -> None:
                 )
 
             # Optimizer and LR scheduler step
-            if (batch_idx + 1) % cfg.grad_accumulation_steps == 0:
+            if is_optimizer_step:
                 optimizer.step()
                 scheduler.step()
                 optimizer.zero_grad()
                 progress.update()
 
             # Save model checkpoint: either keep latest checkpoint only or all checkpoints
-            if gradient_step_idx > 0 and log_step % cfg.save_freq == 0:
+            if is_optimizer_step and gradient_step_idx > 0 and log_step % cfg.save_freq == 0:
                 save_training_checkpoint(
                     cfg=cfg,
                     run_dir=run_dir,
@@ -1095,10 +1296,13 @@ def finetune(cfg: FinetuneConfig) -> None:
                     train_dataset=train_dataset,
                     distributed_state=distributed_state,
                     new_state_dict=RAW_STATE_DICT,
+                    expected_vision_sha256=(
+                        shared_vision_sha256 if cfg.verify_shared_vision_sha256 else None
+                    ),
                 )
 
             # Test model on validation set
-            if cfg.use_val_set and log_step > 0 and log_step % cfg.val_freq == 0:
+            if cfg.use_val_set and is_optimizer_step and log_step > 0 and log_step % cfg.val_freq == 0:
                 run_validation(
                     vla=vla,
                     action_head=action_head,
@@ -1115,11 +1319,16 @@ def finetune(cfg: FinetuneConfig) -> None:
                 )
                 # Set model back to training mode after validation
                 vla.train()
+                if cfg.freeze_shared_vision:
+                    freeze_shared_vision_backbone(vla)
 
             # Stop training when max_steps is reached
-            if log_step == cfg.max_steps:
+            if is_optimizer_step and log_step >= cfg.max_steps:
                 print(f"Max step {cfg.max_steps} reached! Stopping training...")
                 break
+
+    if distributed_state.is_main_process:
+        wandb.finish()
 
 
 if __name__ == "__main__":
