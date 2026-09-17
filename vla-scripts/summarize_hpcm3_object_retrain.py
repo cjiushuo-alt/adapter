@@ -17,6 +17,7 @@ TRAIN_RUN = MECHANICAL_ROOT / "runs" / RUN_ID
 TRAIN_LOG = MECHANICAL_ROOT / "logs" / f"{RUN_ID}.log"
 CHECKPOINT = MECHANICAL_ROOT / "runs" / f"{RUN_ID}--200000_chkpt"
 RESULT_ROOT = REPO / "results" / "hpcm3_object_retrain_eval"
+SPATIAL_RESULT_ROOT = REPO / "results" / "hpcm3_libero4" / "spatial"
 WANDB_URL = "https://wandb.ai/cjs838237678-nanjing-university/vla-adapter-shared-vision/runs/9tx7sqhs"
 
 
@@ -55,9 +56,23 @@ def per_task_rows(summary: dict) -> list[str]:
     return rows
 
 
+def validate_formal_summary(summary: dict, expected_suite: str) -> None:
+    if summary.get("suite") != expected_suite:
+        raise ValueError(f"Expected suite {expected_suite}, got {summary.get('suite')}")
+    if summary.get("task_count") != 10:
+        raise ValueError(f"Expected 10 tasks for {expected_suite}")
+    if summary.get("total_episodes") != 500:
+        raise ValueError(f"Expected 500 episodes for {expected_suite}")
+    per_task = summary.get("per_task", [])
+    if len(per_task) != 10 or any(item.get("episodes") != 50 for item in per_task):
+        raise ValueError(f"Expected 50 episodes for every task in {expected_suite}")
+
+
 def main() -> None:
     object_summary = load_json(RESULT_ROOT / "object" / "summary.json")
-    spatial_summary = load_json(RESULT_ROOT / "spatial" / "summary.json")
+    spatial_summary = load_json(SPATIAL_RESULT_ROOT / "summary.json")
+    validate_formal_summary(object_summary, "libero_object")
+    validate_formal_summary(spatial_summary, "libero_spatial")
     vision_metadata = load_json(TRAIN_RUN / "shared_vision_metadata.json")
     log_text = TRAIN_LOG.read_text(encoding="utf-8", errors="replace")
     losses = [float(value) for value in re.findall(r"curr:\s+([0-9.]+)", log_text)]
@@ -73,8 +88,10 @@ def main() -> None:
         "",
         (
             "This experiment froze the Spatial-Pro vision tower, HPCM codec, and HPCM3 adapter, "
-            "then retrained only the non-vision Object policy components. The same resulting policy "
-            "checkpoint was evaluated on both LIBERO-Object and LIBERO-Spatial."
+            "then retrained only the non-vision Object policy components. Object uses that newly "
+            "trained policy checkpoint; Spatial uses the retained Spatial-Pro policy with the same "
+            "frozen HPCM/HPCM3 visual path. This is a shared-vision, suite-specific-policy comparison, "
+            "not cross-suite use of the Object policy."
         ),
         "",
         "| Evaluation suite | Success | Episodes | Exact HPCM3 train-frame matches |",
@@ -115,7 +132,8 @@ def main() -> None:
             "- 10 tasks per suite and 50 episodes per task (500 episodes per suite).",
             "- Fixed seed 7 and official default LIBERO initial states.",
             "- HPCM3 rollout frame hashing enabled; hashes are compared with the cached HPCM3 training split.",
-            "- Both evaluations use Object action/proprio normalization statistics because this policy was trained in Object's normalized action space.",
+            "- Object uses Object action/proprio normalization; Spatial uses Spatial normalization from Spatial-Pro.",
+            "- Spatial is the completed formal Spatial-Pro/HPCM3 run (491/500), retained rather than needlessly rerun.",
             "- No rollout videos were saved; JSONL episode and frame-audit records are retained.",
             "",
             "## Object per-task results",
@@ -124,7 +142,7 @@ def main() -> None:
             "| ---: | --- | ---: | ---: |",
             *per_task_rows(object_summary),
             "",
-            "## Spatial cross-suite per-task results",
+            "## Spatial-Pro per-task results",
             "",
             "| Task | Description | Success | Rate |",
             "| ---: | --- | ---: | ---: |",
@@ -134,7 +152,8 @@ def main() -> None:
             "",
             f"- Mechanical checkpoint: `{CHECKPOINT}`",
             "- Object evidence: `results/hpcm3_object_retrain_eval/object/`",
-            "- Spatial evidence: `results/hpcm3_object_retrain_eval/spatial/`",
+            "- Spatial evidence: `results/hpcm3_libero4/spatial/`",
+            "- Per-frame `audit.jsonl` files remain local because they are large; exact-match totals are retained in each `summary.json`.",
             "",
         ]
     )

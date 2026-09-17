@@ -56,7 +56,7 @@ if [[ "$(findmnt -n -o SOURCE -T "${CHECKPOINT}")" != "/dev/sda1" ]]; then
 fi
 
 cd "${REPO_ROOT}"
-for suite in object spatial; do
+for suite in object; do
     suite_dir="${RESULT_ROOT}/${suite}"
     config="${suite_dir}/config.yaml"
     if [[ -f "${suite_dir}/summary.json" ]]; then
@@ -80,13 +80,10 @@ git add -- \
     results/hpcm3_object_retrain_eval/object/config.yaml \
     results/hpcm3_object_retrain_eval/object/summary.json \
     results/hpcm3_object_retrain_eval/object/episode_results.jsonl \
-    results/hpcm3_object_retrain_eval/object/audit.jsonl \
     results/hpcm3_object_retrain_eval/object/run.log \
-    results/hpcm3_object_retrain_eval/spatial/config.yaml \
-    results/hpcm3_object_retrain_eval/spatial/summary.json \
-    results/hpcm3_object_retrain_eval/spatial/episode_results.jsonl \
-    results/hpcm3_object_retrain_eval/spatial/audit.jsonl \
-    results/hpcm3_object_retrain_eval/spatial/run.log
+    results/hpcm3_libero4/spatial/config.yaml \
+    results/hpcm3_libero4/spatial/summary.json \
+    results/hpcm3_libero4/spatial/run.log
 git commit -m "report Object retraining and Object-Spatial evaluation"
 
 for attempt in 1 2 3 4 5; do

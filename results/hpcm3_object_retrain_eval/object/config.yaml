@@ -66,9 +66,12 @@ audit:
   train_hash_cache: "/home/cjs/study/VLA/VLA-Adapter/training_state/hpcm3_train_rgb_sha256_seed42_ratio0.9.txt"
 
 guard:
-  enabled: false
-  min_episodes: 20
-  min_success_rate: 0.0
+  # Stop for human review if the first two complete tasks are both largely
+  # unsuccessful. This avoids wasting the full 500-episode budget on a broken
+  # policy while not overreacting to one unusually difficult task.
+  enabled: true
+  min_episodes: 100
+  min_success_rate: 0.1
 
 seed: 7
 phase: "Inference"

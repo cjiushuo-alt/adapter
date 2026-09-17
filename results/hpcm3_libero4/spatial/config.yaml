@@ -1,7 +1,7 @@
-# Cross-suite evaluation of the same Object-trained non-vision policy on Spatial.
+# Formal HPCM3 evaluation: libero_spatial
 model:
   model_family: "openvla"
-  pretrained_checkpoint: "/media/cjs/shared/linux/VLA-Adapter/shared_vision_policy_ckpts/runs/shared-spatialpro-hpcm3-object-nonvision-r64-b2-ga8-seed7-20260917-2000--200000_chkpt"
+  pretrained_checkpoint: "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Spatial-Pro"
   use_l1_regression: true
   use_minivlm: true
   num_diffusion_steps: 50
@@ -10,12 +10,10 @@ model:
   use_proprio: true
   center_crop: true
   num_open_loop_steps: 8
-  # The policy was trained in Object's normalized action space, so both suites
-  # must decode actions with Object statistics for a valid cross-suite test.
-  unnorm_key: "libero_object_no_noops"
+  unnorm_key: "libero_spatial_no_noops"
   load_in_8bit: false
   load_in_4bit: false
-  save_version: "hpcm3-object-retrained-spatial-cross-suite"
+  save_version: "hpcm3-libero4-spatial"
   use_pro_version: true
   hpcm:
     hpcm_root: "/home/cjs/study/VLA/VLA-Adapter/HPCM"
@@ -37,7 +35,7 @@ model:
     neck_activation: "gelu"
   vision_backbone:
     max_layer: 2
-  vla_path: "/media/cjs/shared/linux/VLA-Adapter/shared_vision_policy_ckpts/runs/shared-spatialpro-hpcm3-object-nonvision-r64-b2-ga8-seed7-20260917-2000--200000_chkpt"
+  vla_path: "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Spatial-Pro"
   vla_id: "prismatic"
   processor_name: null
 
@@ -49,28 +47,23 @@ libero:
   env_img_res: 256
 
 logging:
-  run_id_note: "hpcm3-object-retrained-spatial-eval"
-  local_log_dir: "/home/cjs/study/VLA/VLA-Adapter/results/hpcm3_object_retrain_eval/spatial"
+  run_id_note: "hpcm3-libero4-spatial"
+  local_log_dir: "/home/cjs/study/VLA/VLA-Adapter/results/hpcm3_libero4/spatial"
   use_wandb: false
   wandb_entity: "your-wandb-entity"
   wandb_project: "your-wandb-project"
-  episode_results_jsonl: "/home/cjs/study/VLA/VLA-Adapter/results/hpcm3_object_retrain_eval/spatial/episode_results.jsonl"
-  summary_json: "/home/cjs/study/VLA/VLA-Adapter/results/hpcm3_object_retrain_eval/spatial/summary.json"
+  episode_results_jsonl: "/home/cjs/study/VLA/VLA-Adapter/results/hpcm3_libero4/spatial/episode_results.jsonl"
+  summary_json: "/home/cjs/study/VLA/VLA-Adapter/results/hpcm3_libero4/spatial/summary.json"
   save_rollout_videos: false
 
 audit:
   enabled: true
-  output_jsonl: "/home/cjs/study/VLA/VLA-Adapter/results/hpcm3_object_retrain_eval/spatial/audit.jsonl"
+  output_jsonl: "/home/cjs/study/VLA/VLA-Adapter/results/hpcm3_libero4/spatial/audit.jsonl"
   compare_train_frames: true
   train_dataset_dir: "/home/cjs/study/VLA/VLA-Adapter/Align_adapter/dataset"
   train_ratio: 0.9
   split_seed: 42
   train_hash_cache: "/home/cjs/study/VLA/VLA-Adapter/training_state/hpcm3_train_rgb_sha256_seed42_ratio0.9.txt"
-
-guard:
-  enabled: false
-  min_episodes: 20
-  min_success_rate: 0.0
 
 seed: 7
 phase: "Inference"
