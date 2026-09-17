@@ -36,6 +36,14 @@ while true; do
     sleep 600
 done
 
+# The completion line is emitted before wandb.finish() and process teardown.
+# Do not let evaluation race the still-resident training model for GPU memory.
+while pgrep -f "vla-scripts/finetune.py.*${RUN_ID}" >/dev/null; do
+    log "training complete; waiting for CUDA process teardown"
+    sleep 30
+done
+log "training process exited; GPU is available for evaluation"
+
 for required in model.safetensors dataset_statistics.json; do
     if [[ ! -f "${CHECKPOINT}/${required}" ]]; then
         log "ERROR: missing final checkpoint artifact ${CHECKPOINT}/${required}"
