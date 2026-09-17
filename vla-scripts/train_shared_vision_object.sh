@@ -28,6 +28,8 @@ fi
 
 export WANDB_DIR="${WANDB_ROOT}"
 export TOKENIZERS_PARALLELISM=false
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
 
 cd "${REPO_ROOT}"
 echo "Object training log: ${LOG_FILE}"
@@ -41,6 +43,11 @@ exec "${TORCHRUN_BIN}" --standalone --nnodes 1 --nproc-per-node 1 vla-scripts/fi
     --freeze_shared_vision True \
     --exclude_vision_from_lora True \
     --verify_shared_vision_sha256 True \
+    --use_hpcm3_vision True \
+    --hpcm_root HPCM \
+    --hpcm_checkpoint HPCM/ckpt/0.0018.pth.tar \
+    --hpcm3_adapter_checkpoint Align_adapter-HPCM3/ckpt/last-v1.pt \
+    --hpcm3_vision_max_layer 2 \
     --use_film False \
     --num_images_in_input 2 \
     --use_proprio True \

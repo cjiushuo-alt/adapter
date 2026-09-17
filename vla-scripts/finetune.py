@@ -7,6 +7,7 @@ Fine-tunes Qwen2.5-0.5B via LoRA.
 import hashlib
 import json
 import os
+import sys
 import time
 from collections import deque
 from dataclasses import asdict, dataclass
@@ -124,6 +125,11 @@ class FinetuneConfig:
     freeze_shared_vision: bool = False
     exclude_vision_from_lora: bool = False
     verify_shared_vision_sha256: bool = True
+    use_hpcm3_vision: bool = False
+    hpcm_root: Path = Path("HPCM")
+    hpcm_checkpoint: Path = Path("HPCM/ckpt/0.0018.pth.tar")
+    hpcm3_adapter_checkpoint: Path = Path("Align_adapter-HPCM3/ckpt/last-v1.pt")
+    hpcm3_vision_max_layer: int = 2
 
     # Logging
     wandb_entity: str = "your-wandb-entity"          # Name of WandB entity
@@ -145,6 +151,14 @@ def _resolve_model_safetensors(checkpoint: Path) -> Path:
     if not model_path.is_file():
         raise FileNotFoundError(f"Shared vision checkpoint not found: {model_path}")
     return model_path
+
+
+def _file_sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _vision_backbone(model: nn.Module) -> nn.Module:
@@ -235,6 +249,71 @@ def non_vision_linear_module_names(model: nn.Module) -> list[str]:
     if not names:
         raise RuntimeError("No non-vision linear modules found for LoRA injection")
     return names
+
+
+def install_frozen_hpcm3_vision(model: nn.Module, cfg: FinetuneConfig, device_id: int) -> dict:
+    """Replace the raw image tower with the exact frozen HPCM3 rollout vision path."""
+    hpcm3_code_root = (Path(__file__).resolve().parents[1] / "Align_adapter-HPCM3" / "code").resolve()
+    if str(hpcm3_code_root) not in sys.path:
+        sys.path.insert(0, str(hpcm3_code_root))
+
+    from inference.model.combined_vision_model import CombinedVisionModel
+    from inference.model.model import VisionBackboneWrapper
+
+    hpcm_root = Path(cfg.hpcm_root).expanduser().resolve()
+    hpcm_checkpoint = Path(cfg.hpcm_checkpoint).expanduser().resolve()
+    adapter_checkpoint = Path(cfg.hpcm3_adapter_checkpoint).expanduser().resolve()
+    for label, path in (
+        ("HPCM checkpoint", hpcm_checkpoint),
+        ("HPCM3 adapter checkpoint", adapter_checkpoint),
+    ):
+        if not path.is_file():
+            raise FileNotFoundError(f"{label} not found: {path}")
+
+    original_backbone = model.vision_backbone
+    combined = CombinedVisionModel(
+        vision_backbone_id="dinosiglip-vit-so-224px",
+        vision_backbone_checkpoint=None,
+        vision_backbone_max_layer=cfg.hpcm3_vision_max_layer,
+        image_resize_strategy="letterbox",
+        image_sequence_len=1,
+        device=torch.device("cuda", device_id),
+        hpcm_root=str(hpcm_root),
+        hpcm_checkpoint=str(hpcm_checkpoint),
+        adapter_weights_path=str(adapter_checkpoint),
+        external_vision_backbone=original_backbone,
+        freeze_vision_backbone=True,
+        train_adapter=False,
+    )
+
+    # Match the proven rollout implementation: HPCM remains FP32 while the
+    # adapter/posterior vision path uses FP16 and emits BF16 projector inputs.
+    for name, parameter in combined.named_parameters():
+        if "hpcm_encoder" not in name and parameter.is_floating_point():
+            parameter.data = parameter.data.to(dtype=torch.float16)
+    for name, buffer in combined.named_buffers():
+        if "hpcm_encoder" not in name and buffer.is_floating_point():
+            buffer.data = buffer.data.to(dtype=torch.float16)
+
+    wrapper = VisionBackboneWrapper(combined.to(device_id), original_backbone)
+    wrapper.set_num_images_in_input(cfg.num_images_in_input)
+    model.vision_backbone = wrapper
+    freeze_shared_vision_backbone(model)
+
+    metadata = {
+        "enabled": True,
+        "hpcm_checkpoint": str(hpcm_checkpoint),
+        "hpcm_checkpoint_sha256": _file_sha256(hpcm_checkpoint),
+        "adapter_checkpoint": str(adapter_checkpoint),
+        "adapter_checkpoint_sha256": _file_sha256(adapter_checkpoint),
+        "vision_max_layer": cfg.hpcm3_vision_max_layer,
+    }
+    print(
+        "Installed frozen HPCM3 rollout vision path: "
+        f"HPCM={metadata['hpcm_checkpoint_sha256']}, "
+        f"adapter={metadata['adapter_checkpoint_sha256']}"
+    )
+    return metadata
 
 
 
@@ -613,6 +692,7 @@ def save_training_checkpoint(
     distributed_state,
     new_state_dict,
     expected_vision_sha256=None,
+    vision_is_wrapped=False,
 ) -> None:
     """
     Save all training checkpoints including model components, LoRA adapter, and dataset statistics.
@@ -634,7 +714,10 @@ def save_training_checkpoint(
     """
     if expected_vision_sha256 is not None:
         freeze_shared_vision_backbone(vla)
-        assert_shared_vision_contract(vla, expected_vision_sha256)
+        assert_shared_vision_contract(
+            vla,
+            None if vision_is_wrapped else expected_vision_sha256,
+        )
 
     # Determine checkpoint paths and naming
     if cfg.save_latest_checkpoint_only:
@@ -835,6 +918,8 @@ def finetune(cfg: FinetuneConfig) -> None:
             )
         if cfg.use_film or cfg.use_fz:
             raise ValueError("Shared vision training is incompatible with use_film/use_fz")
+    if cfg.use_hpcm3_vision and cfg.shared_vision_checkpoint is None:
+        raise ValueError("use_hpcm3_vision requires shared_vision_checkpoint")
     if cfg.wandb_mode not in {"online", "offline", "disabled"}:
         raise ValueError(f"Unsupported wandb_mode: {cfg.wandb_mode}")
 
@@ -975,6 +1060,7 @@ def finetune(cfg: FinetuneConfig) -> None:
     vla.vision_backbone.set_num_images_in_input(cfg.num_images_in_input)
 
     shared_vision_sha256 = None
+    shared_vision_metadata = None
     if cfg.shared_vision_checkpoint is not None:
         shared_vision_sha256 = load_shared_vision_backbone(vla, cfg.shared_vision_checkpoint)
         freeze_shared_vision_backbone(vla)
@@ -985,15 +1071,19 @@ def finetune(cfg: FinetuneConfig) -> None:
         for name, tensor in _vision_backbone(vla).state_dict().items():
             RAW_STATE_DICT[f"vision_backbone.{name}"] = tensor.detach().cpu().clone()
 
+        shared_vision_metadata = {
+            "source_checkpoint": str(_resolve_model_safetensors(cfg.shared_vision_checkpoint)),
+            "vision_backbone_sha256": shared_vision_sha256,
+            "frozen": True,
+            "vision_lora_excluded": True,
+        }
+
+        if cfg.use_hpcm3_vision:
+            shared_vision_metadata["hpcm3"] = install_frozen_hpcm3_vision(vla, cfg, device_id)
+
         if distributed_state.is_main_process:
-            metadata = {
-                "source_checkpoint": str(_resolve_model_safetensors(cfg.shared_vision_checkpoint)),
-                "vision_backbone_sha256": shared_vision_sha256,
-                "frozen": True,
-                "vision_lora_excluded": True,
-            }
             with open(run_dir / "shared_vision_metadata.json", "w", encoding="utf-8") as handle:
-                json.dump(metadata, handle, indent=2)
+                json.dump(shared_vision_metadata, handle, indent=2)
 
     # vla.set_version(cfg.version)
 
@@ -1020,7 +1110,11 @@ def finetune(cfg: FinetuneConfig) -> None:
             freeze_shared_vision_backbone(vla)
             assert_shared_vision_contract(
                 vla,
-                shared_vision_sha256 if cfg.verify_shared_vision_sha256 else None,
+                (
+                    shared_vision_sha256
+                    if cfg.verify_shared_vision_sha256 and not cfg.use_hpcm3_vision
+                    else None
+                ),
             )
         vla.print_trainable_parameters()
 
@@ -1052,7 +1146,11 @@ def finetune(cfg: FinetuneConfig) -> None:
         freeze_shared_vision_backbone(vla)
         assert_shared_vision_contract(
             vla,
-            shared_vision_sha256 if cfg.verify_shared_vision_sha256 else None,
+            (
+                shared_vision_sha256
+                if cfg.verify_shared_vision_sha256 and not cfg.use_hpcm3_vision
+                else None
+            ),
         )
 
     # If applicable, instantiate proprio projector
@@ -1299,6 +1397,7 @@ def finetune(cfg: FinetuneConfig) -> None:
                     expected_vision_sha256=(
                         shared_vision_sha256 if cfg.verify_shared_vision_sha256 else None
                     ),
+                    vision_is_wrapped=cfg.use_hpcm3_vision,
                 )
 
             # Test model on validation set
