@@ -1,0 +1,75 @@
+model:
+  model_family: "openvla"
+  pretrained_checkpoint: "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro"
+  use_l1_regression: true
+  use_minivlm: true
+  num_diffusion_steps: 50
+  use_film: false
+  num_images_in_input: 2
+  use_proprio: true
+  center_crop: true
+  num_open_loop_steps: 8
+  unnorm_key: "libero_object_no_noops"
+  load_in_8bit: false
+  load_in_4bit: false
+  save_version: "hpcm3-dist-object-seed42"
+  use_pro_version: true
+  hpcm:
+    hpcm_root: "/home/cjs/study/VLA/VLA-Adapter/HPCM"
+    checkpoint: "/home/cjs/study/VLA/VLA-Adapter/HPCM/ckpt/0.0018.pth.tar"
+    model_name: "HPCM_Base"
+    scale_table_levels: 60
+  adapter:
+    checkpoint: "/media/cjs/shared/linux/Align_adapter/hpcm3_object_dist/adapter-best.pt"
+    hpcm_input_dim: 320
+    pre_neck_output_dim: 320
+    pre_neck_spatial_size: 16
+    pre_neck_num_res_blocks: 2
+    pre_neck_dropout: 0.0
+    siglip_dim: 1152
+    dino_dim: 1024
+    neck_num_heads: 8
+    neck_ffn_hidden_dim: null
+    neck_dropout: 0.0
+    neck_activation: "gelu"
+  vision_backbone:
+    max_layer: 2
+  vla_path: "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro"
+  vla_id: "prismatic"
+  processor_name: null
+
+libero:
+  task_suite_name: "libero_object"
+  num_steps_wait: 10
+  num_trials_per_task: 50
+  initial_states_path: "DEFAULT"
+  env_img_res: 256
+
+logging:
+  run_id_note: "hpcm3-dist-object-seed42"
+  local_log_dir: "/home/cjs/study/VLA/VLA-Adapter/results/hpcm3_object_dist/object"
+  use_wandb: false
+  wandb_entity: ""
+  wandb_project: "hpcm-suite-dist-adapter"
+  episode_results_jsonl: "/home/cjs/study/VLA/VLA-Adapter/results/hpcm3_object_dist/object/episode_results.jsonl"
+  summary_json: "/home/cjs/study/VLA/VLA-Adapter/results/hpcm3_object_dist/object/summary.json"
+  save_rollout_videos: false
+
+audit:
+  enabled: true
+  output_jsonl: "/home/cjs/study/VLA/VLA-Adapter/results/hpcm3_object_dist/object/audit.jsonl"
+  compare_train_frames: true
+  train_dataset_dir: "/home/cjs/study/VLA/VLA-Adapter/Align_adapter/dataset"
+  train_ratio: 0.9
+  split_seed: 42
+  split_manifest_path: "/media/cjs/shared/linux/Align_adapter/hpcm3_object_dist/data_split.json"
+  train_hash_cache: "/media/cjs/shared/linux/Align_adapter/hpcm3_object_dist/train_rgb_sha256.txt"
+
+guard:
+  enabled: true
+  min_episodes: 20
+  min_success_rate: 0.5
+
+seed: 7
+phase: "Inference"
+startup_check_only: false

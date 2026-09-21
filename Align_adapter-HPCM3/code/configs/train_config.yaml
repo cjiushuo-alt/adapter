@@ -1,0 +1,126 @@
+# Align Adapter (HPCM3) 训练配置文件
+# HPCM3：图像 -> HPCM 编码器(实时) -> Adapter(ResNet PreNeck) -> 对齐特征，无需预提取 .pt
+
+# ========== 模型配置 ==========
+model:
+  # HPCM 编码器（替代 CGIC），实时从图像提取 y_hat
+  hpcm:
+    hpcm_root: ""   # 空则使用 ../HPCM
+    checkpoint: ""  # 空则 ckpt/0.0018.pth.tar
+    model_name: "HPCM_Base"
+    scale_table_levels: 60
+    freeze: true
+
+  vision:
+    backbone_id: "dinosiglip-vit-so-224px"
+    checkpoint: "Align_adapter/vision_ckpt/vision_backbone_partial_layer2.safetensors"
+    max_layer: 2
+    image_resize_strategy: "letterbox"
+    image_sequence_len: 1
+    freeze_backbone: true
+
+  # HPCM3 Adapter：PreNeck 为 ResNet 版 (num_res_blocks)
+  adapter:
+    hpcm_input_dim: 320
+    pre_neck_output_dim: 320
+    pre_neck_spatial_size: 16
+    pre_neck_num_res_blocks: 2
+    pre_neck_dropout: 0.0
+    # 与 vision backbone 输出一致：dino_featurizer=1024, siglip_featurizer=1152
+    siglip_dim: 1152
+    dino_dim: 1024
+    neck_num_heads: 8
+    neck_ffn_hidden_dim: null
+    neck_dropout: 0.0
+    neck_activation: "gelu"
+    train_adapter: true
+
+# ========== 数据配置 ==========
+# HPCM3 仅需图像，无需预提取 .pt
+data:
+  dataset_dir: "Align_adapter/dataset"
+  dataset_names:
+    - "libero_10_no_noops"
+    - "libero_goal_no_noops"
+    - "libero_object_no_noops"
+    - "libero_spatial_no_noops"
+  image_keys: ["image", "wrist_image"]
+  image_size: 256  # 与 CGIC / 推理一致，避免 train/test 分辨率不一致导致 val loss 偏高
+  batch_size: 32
+  num_workers: 8
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 2
+  train_ratio: 0.9
+  seed: 42
+
+# ========== 训练配置 ==========
+training:
+  max_epochs: 200
+  max_steps: -1
+  gradient_clip_val: 1.0
+  gradient_clip_algorithm: "norm"
+
+  optimizer:
+    type: "adamw"
+    lr: 1.0e-4
+    weight_decay: 0.01
+    betas: [0.9, 0.999]
+    eps: 1.0e-8
+
+  lr_scheduler:
+    type: "cosine"
+    warmup_steps: 1000
+    min_lr: 1.0e-6
+
+  precision: "16"
+  accumulate_grad_batches: 1
+
+  checkpoint:
+    save_top_k: 1
+    monitor: "val_loss"
+    mode: "min"
+    save_last: true
+    every_n_steps: 800
+    train_every_n_steps: 400
+
+  resume:
+    enabled: false
+    state_ckpt_path: "/media/cjs/shared/linux/Align_adapter/Align_adapter_HPCM_ckpts/checkpoints/last.ckpt"
+    adapter_only_path: null
+    strict: true
+
+  validation:
+    every_n_steps: 800
+
+  log_every_n_steps: 5
+  enable_progress_bar: true
+
+# ========== WandB ==========
+# 从 checkpoint 恢复训练时，若希望曲线接在同一个 run 上，请：
+# 1. 在 WandB 网页或首次运行日志中找到该 run 的 run_id（如 mmh5bpx7）
+# 2. 将 resume.enabled 设为 true，run_id 填为上面的 id
+wandb:
+  project: "align-adapter-hpcm-2"
+  experiment_name: "align_adapter_hpcm_train"
+  resume:
+    enabled: false   # 改为 true 并填 run_id 可接回同一 run
+    run_id: v6tsszbw     # 例: "mmh5bpx7"
+    resume_mode: "allow"
+
+# ========== 损失函数 ==========
+loss:
+  type: "dist"
+  siglip_loss_weight: 1.0
+  dino_loss_weight: 5.0
+  reduction: "mean"
+
+# ========== 设备 ==========
+device:
+  accelerator: "gpu"
+  devices: 1
+  strategy: "auto"
+
+seed: 42
+output_dir: "/media/cjs/shared/linux/Align_adapter/Align_adapter_HPCM_ckpts"
+debug: false

@@ -1,0 +1,2 @@
+hpcm_encoder.py用于直接输出hpcm_encoder的量化后的结果（注意：是均值修正后的浮点数）
+dataset_extract.py用于将libero数据集中的图片经过hpcm_encoder并保存在 /media/cjs/shared/linux/Align_adapter/HPCM_dataset

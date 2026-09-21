@@ -1,0 +1,87 @@
+# Align_adapter-HPCM3 推理评估配置
+# HPCM3：HPCM + Adapter（ResNet PreNeck）+ Vision Backbone，与 train_config 一致
+
+# ========== 模型配置 ==========
+model:
+  model_family: "openvla"
+  pretrained_checkpoint: "outputs/LIBERO-Spatial-Pro"
+
+  use_l1_regression: true
+  use_minivlm: true
+  num_diffusion_steps: 50
+  use_film: false
+  num_images_in_input: 2
+  use_proprio: true
+
+  center_crop: true
+  num_open_loop_steps: 8
+
+  load_in_8bit: false
+  load_in_4bit: false
+
+  save_version: "vla-adapter-hpcm3"
+  use_pro_version: true
+
+  unnorm_key: ""
+
+  # --- HPCM 配置 ---
+  hpcm:
+    hpcm_root: ""
+    checkpoint: "/home/cjs/study/VLA/VLA-Adapter/HPCM/ckpt/0.0018.pth.tar"
+    model_name: "HPCM_Base"
+    scale_table_levels: 60
+
+  # --- Adapter 配置（与 train_config 一致，PreNeck 为 ResNet）---
+  adapter:
+    checkpoint: "/home/cjs/study/VLA/VLA-Adapter/Align_adapter-HPCM3/ckpt/last-v1.pt"
+    hpcm_input_dim: 320
+    pre_neck_output_dim: 320
+    pre_neck_spatial_size: 16
+    pre_neck_num_res_blocks: 2
+    pre_neck_dropout: 0.0
+    siglip_dim: 1152
+    dino_dim: 1024
+    neck_num_heads: 8
+    neck_ffn_hidden_dim: null
+    neck_dropout: 0.0
+    neck_activation: "gelu"
+
+  # --- Vision Backbone 配置 ---
+  vision_backbone:
+    max_layer: 2
+
+  # --- VLA 加载（与 pretrained_checkpoint 可一致）---
+  vla_path: "prismatic"     # "prismatic" 或本地 checkpoint 目录/文件
+  vla_id: "prismatic"
+  processor_name: null
+
+# ========== LIBERO 环境配置 ==========
+libero:
+  task_suite_name: "libero_spatial"
+  num_steps_wait: 10
+  num_trials_per_task: 50
+  initial_states_path: "DEFAULT"
+  env_img_res: 256
+
+# ========== 日志配置 ==========
+logging:
+  run_id_note: null
+  local_log_dir: "/media/cjs/shared/linux/Align_adapter/libero-test-hpcm3-last-v1"
+  use_wandb: false
+  wandb_entity: "your-wandb-entity"
+  wandb_project: "your-wandb-project"
+
+# ========== 可选数据重合审计（默认关闭） ==========
+audit:
+  enabled: false
+  # null 时自动写到 logging.local_log_dir/EVAL-*--frame-audit.jsonl
+  output_jsonl: null
+  # true 会在 rollout 前扫描并解码约 54 万张训练候选 PNG，启动较慢、占用额外内存
+  compare_train_frames: false
+  train_dataset_dir: "Align_adapter/dataset"
+  train_ratio: 0.9
+  split_seed: 42
+
+# ========== 全局配置 ==========
+seed: 7
+phase: "Inference"
