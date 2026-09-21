@@ -10,8 +10,8 @@ model:
 
   vision:
     backbone_id: "dinosiglip-vit-so-224px"
-    # 加载器只取 Object-Pro 双塔的 blocks.0-2；不使用 Spatial-Pro teacher。
-    checkpoint: "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro/model.safetensors"
+    # 从 Object-Pro 提取的双塔 blocks.0-2；不使用 Spatial-Pro teacher。
+    checkpoint: "/media/cjs/shared/linux/Align_adapter/hpcm3_object_dist/teacher/vision_backbone_partial_layer2.safetensors"
     max_layer: 2
     image_resize_strategy: "letterbox"
     image_sequence_len: 1
