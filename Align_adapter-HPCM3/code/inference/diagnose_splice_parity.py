@@ -102,8 +102,10 @@ def main() -> None:
     )
     env.close()
 
-    processor = get_processor(cfg)
     intact = get_vla(cfg)
+    # get_vla registers the local OpenVLA AutoClasses; processor loading must
+    # happen afterwards, matching initialize_model() in the formal evaluator.
+    processor = get_processor(cfg)
     action_head = get_action_head(cfg, intact.llm_dim)
     proprio_projector = get_proprio_projector(cfg, intact.llm_dim, proprio_dim=8)
     pixel_values = _processor_pixels(processor, cfg, observation, task_description)
