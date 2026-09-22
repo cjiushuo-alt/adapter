@@ -1,0 +1,125 @@
+# Object-Pro HPCM3 Adapter retraining with the four-suite image corpus used by
+# the successful Spatial experiment.  Checkpoints and W&B files stay on HDD.
+model:
+  hpcm:
+    hpcm_root: "/home/cjs/study/VLA/VLA-Adapter/HPCM"
+    checkpoint: "/home/cjs/study/VLA/VLA-Adapter/HPCM/ckpt/0.0018.pth.tar"
+    model_name: "HPCM_Base"
+    scale_table_levels: 60
+    freeze: true
+
+  vision:
+    backbone_id: "dinosiglip-vit-so-224px"
+    # Exact blocks 0-2 extracted from Object-Pro (audited tensor-for-tensor).
+    checkpoint: "/media/cjs/shared/linux/Align_adapter/hpcm3_object_dist/teacher/vision_backbone_partial_layer2.safetensors"
+    max_layer: 2
+    image_resize_strategy: "letterbox"
+    image_sequence_len: 1
+    freeze_backbone: true
+
+  adapter:
+    hpcm_input_dim: 320
+    pre_neck_output_dim: 320
+    pre_neck_spatial_size: 16
+    pre_neck_num_res_blocks: 2
+    pre_neck_dropout: 0.0
+    siglip_dim: 1152
+    dino_dim: 1024
+    neck_num_heads: 8
+    neck_ffn_hidden_dim: null
+    neck_dropout: 0.0
+    neck_activation: "gelu"
+    train_adapter: true
+
+data:
+  dataset_dir: "/home/cjs/study/VLA/VLA-Adapter/Align_adapter/dataset"
+  dataset_names:
+    - "libero_10_no_noops"
+    - "libero_goal_no_noops"
+    - "libero_object_no_noops"
+    - "libero_spatial_no_noops"
+  image_keys: ["image", "wrist_image"]
+  image_size: 256
+  batch_size: 32
+  num_workers: 8
+  pin_memory: true
+  persistent_workers: true
+  prefetch_factor: 2
+  train_ratio: 0.9
+  # Preserve the paper-grade split introduced after the historical Spatial run.
+  split_unit: "trajectory"
+  split_manifest_path: "/media/cjs/shared/linux/Align_adapter/hpcm3_object_dist_libero4/data_split.json"
+  seed: 42
+
+training:
+  # Safety ceiling only; validation early stopping is the actual stop rule.
+  max_epochs: 200
+  max_steps: -1
+  gradient_clip_val: 1.0
+  gradient_clip_algorithm: "norm"
+  precision: "16"
+  accumulate_grad_batches: 1
+
+  optimizer:
+    type: "adamw"
+    lr: 1.0e-4
+    weight_decay: 0.01
+    betas: [0.9, 0.999]
+    eps: 1.0e-8
+
+  lr_scheduler:
+    type: "cosine"
+    warmup_steps: 1000
+    min_lr: 1.0e-6
+
+  checkpoint:
+    save_top_k: 1
+    monitor: "val_loss"
+    mode: "min"
+    save_last: true
+    every_n_steps: null
+    train_every_n_steps: null
+
+  early_stopping:
+    enabled: true
+    monitor: "val_loss"
+    mode: "min"
+    min_delta: 1.0e-4
+    patience: 5
+    check_finite: true
+
+  validation:
+    every_n_steps: null
+    every_n_epochs: 1
+
+  resume:
+    enabled: false
+    state_ckpt_path: null
+    adapter_only_path: null
+    strict: true
+
+  log_every_n_steps: 5
+  enable_progress_bar: true
+
+wandb:
+  project: "hpcm-suite-dist-adapter"
+  experiment_name: "hpcm3-dist-object-libero4-seed42"
+  resume:
+    enabled: false
+    run_id: null
+    resume_mode: "allow"
+
+loss:
+  type: "dist"
+  siglip_loss_weight: 1.0
+  dino_loss_weight: 5.0
+  reduction: "mean"
+
+device:
+  accelerator: "gpu"
+  devices: 1
+  strategy: "auto"
+
+seed: 42
+output_dir: "/media/cjs/shared/linux/Align_adapter/hpcm3_object_dist_libero4"
+debug: false
