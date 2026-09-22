@@ -810,7 +810,11 @@ def get_vla_action(
         # standard OpenVLA image path applies JPEG, 224px resize and optional
         # center crop, so stage the raw frames through the custom backbone's
         # one-shot side channel while retaining the processor for text inputs.
-        raw_hpcm_images = obs.get("_hpcm_raw_images")
+        raw_hpcm_images = (
+            obs.get("_hpcm_raw_images")
+            if getattr(cfg, "hpcm_raw_input_bypass", False)
+            else None
+        )
         vision_backbone = getattr(vla, "vision_backbone", None)
         if raw_hpcm_images is not None:
             if vision_backbone is None or not hasattr(vision_backbone, "set_raw_images"):

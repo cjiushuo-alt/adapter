@@ -153,6 +153,9 @@ class ModelConfig:
     num_images_in_input: int = 2
     use_proprio: bool = True
     center_crop: bool = True
+    # Keep False for exact parity with the successful historical Spatial run.
+    # True enables the raw 256px HPCM-input diagnostic path.
+    hpcm_raw_input_bypass: bool = False
     num_open_loop_steps: int = 8
     unnorm_key: str = ""
     load_in_8bit: bool = False
@@ -297,6 +300,10 @@ class InferenceConfig:
     @property
     def center_crop(self):
         return self.model.center_crop
+
+    @property
+    def hpcm_raw_input_bypass(self):
+        return self.model.hpcm_raw_input_bypass
 
 def _resolve_vla_checkpoint(vla_path: str, pretrained_checkpoint: str) -> str:
     """
