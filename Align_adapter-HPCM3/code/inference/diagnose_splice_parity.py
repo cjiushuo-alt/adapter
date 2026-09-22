@@ -79,12 +79,23 @@ def _split_fused_pixels(pixel_values: torch.Tensor):
     return dino, siglip
 
 
-def _layer2_targets(backbone, pixel_values: torch.Tensor):
-    dino_pixels, siglip_pixels = _split_fused_pixels(pixel_values)
+def _layer2_targets(backbone, dino_pixels: torch.Tensor, siglip_pixels: torch.Tensor):
     with torch.inference_mode():
         dino = backbone.featurizer.get_intermediate_layers(dino_pixels, n={2})[0]
         siglip = backbone.fused_featurizer.get_intermediate_layers(siglip_pixels, n={2})[0]
     return dino.detach().cpu(), siglip.detach().cpu()
+
+
+def _training_path_pixels(observation):
+    images = np.stack(observation["_hpcm_raw_images"])
+    image = torch.from_numpy(images).permute(0, 3, 1, 2).cuda().float().div(127.5).sub(1.0)
+    image_224 = torch.nn.functional.interpolate(
+        image, size=(224, 224), mode="bilinear", align_corners=False
+    )
+    image_01 = (image_224 + 1.0) / 2.0
+    mean = torch.tensor([0.485, 0.456, 0.406], device=image.device).view(1, 3, 1, 1)
+    std = torch.tensor([0.229, 0.224, 0.225], device=image.device).view(1, 3, 1, 1)
+    return (image_01 - mean) / std, image_224, image
 
 
 def main() -> None:
@@ -93,6 +104,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--task-id", type=int, default=0)
     parser.add_argument("--episode-index", type=int, default=0)
+    parser.add_argument("--hpcm-input", choices=("historical", "raw"), default="historical")
     args = parser.parse_args()
 
     raw = yaml.safe_load(args.config.read_text())
@@ -127,7 +139,14 @@ def main() -> None:
     proprio_projector = get_proprio_projector(cfg, intact.llm_dim, proprio_dim=8)
     pixel_values = _processor_pixels(processor, cfg, observation, task_description)
     with torch.inference_mode():
-        target_dino, target_siglip = _layer2_targets(intact.vision_backbone, pixel_values)
+        if args.hpcm_input == "raw":
+            target_dino_pixels, target_siglip_pixels, raw_hpcm_input = _training_path_pixels(observation)
+        else:
+            target_dino_pixels, target_siglip_pixels = _split_fused_pixels(pixel_values)
+            raw_hpcm_input = None
+        target_dino, target_siglip = _layer2_targets(
+            intact.vision_backbone, target_dino_pixels, target_siglip_pixels
+        )
         intact_features = intact.vision_backbone(pixel_values).detach().cpu()
         intact_actions = np.asarray(
             get_vla_action(
@@ -156,15 +175,21 @@ def main() -> None:
         num_images_in_input=cfg.num_images_in_input,
         device="cuda",
     )
+    cfg.hpcm_raw_input_bypass = args.hpcm_input == "raw"
     with torch.inference_mode():
-        _, hpcm_input = _split_fused_pixels(pixel_values)
-        if hpcm_input.shape[-2:] != (256, 256):
-            hpcm_input = torch.nn.functional.interpolate(
-                hpcm_input, size=(256, 256), mode="bicubic", align_corners=False
-            )
+        if args.hpcm_input == "raw":
+            hpcm_input = raw_hpcm_input
+        else:
+            _, hpcm_input = _split_fused_pixels(pixel_values)
+            if hpcm_input.shape[-2:] != (256, 256):
+                hpcm_input = torch.nn.functional.interpolate(
+                    hpcm_input, size=(256, 256), mode="bicubic", align_corners=False
+                )
         splice_details = spliced.vision_backbone.model(image=hpcm_input)
         aligned_dino = splice_details["aligned_dino_features"].squeeze(1).detach().cpu()
         aligned_siglip = splice_details["aligned_siglip_features"].squeeze(1).detach().cpu()
+        if args.hpcm_input == "raw":
+            spliced.vision_backbone.set_raw_images(observation["_hpcm_raw_images"])
         spliced_features = spliced.vision_backbone(pixel_values).detach().cpu()
         spliced_actions = np.asarray(
             get_vla_action(
@@ -179,7 +204,7 @@ def main() -> None:
         "task_id": args.task_id,
         "episode_index": args.episode_index,
         "task_description": task_description,
-        "preprocessing": "historical_spatial_processor_path",
+        "preprocessing": args.hpcm_input,
         "feature_shape": list(intact_features.shape),
         "features": {
             "boundary_layer2": {
