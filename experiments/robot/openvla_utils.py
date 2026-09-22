@@ -293,9 +293,12 @@ def get_vla(cfg: Any) -> torch.nn.Module:
         AutoProcessor.register(OpenVLAConfig, PrismaticProcessor)
         AutoModelForVision2Seq.register(OpenVLAConfig, OpenVLAForActionPrediction)
 
-        # Update config.json and sync model files
-        update_auto_map(cfg.pretrained_checkpoint)
-        check_model_logic_mismatch(cfg.pretrained_checkpoint)
+        # Formal evaluations may require checkpoint directories to remain byte-for-byte
+        # immutable. The local AutoClass registrations above are sufficient when
+        # trust_remote_code=False, so mutation/synchronization can be explicitly skipped.
+        if not getattr(cfg, "preserve_checkpoint_files", False):
+            update_auto_map(cfg.pretrained_checkpoint)
+            check_model_logic_mismatch(cfg.pretrained_checkpoint)
 
     # Load the model
     vla = AutoModelForVision2Seq.from_pretrained(
@@ -803,7 +806,20 @@ def get_vla_action(
             obs["state"] = normalize_proprio(proprio, proprio_norm_stats)
             proprio = obs["state"]
 
-        
+        # HPCM adapters are trained from raw decoded 256x256 RGB frames.  The
+        # standard OpenVLA image path applies JPEG, 224px resize and optional
+        # center crop, so stage the raw frames through the custom backbone's
+        # one-shot side channel while retaining the processor for text inputs.
+        raw_hpcm_images = obs.get("_hpcm_raw_images")
+        vision_backbone = getattr(vla, "vision_backbone", None)
+        if raw_hpcm_images is not None:
+            if vision_backbone is None or not hasattr(vision_backbone, "set_raw_images"):
+                raise RuntimeError(
+                    "Observation contains _hpcm_raw_images but the active vision backbone "
+                    "does not support the raw HPCM input bypass"
+                )
+            vision_backbone.set_raw_images(raw_hpcm_images)
+
         # Generate action
         if action_head is None:
             # Standard VLA output (single-image inputs, discrete actions)

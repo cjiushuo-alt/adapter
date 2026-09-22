@@ -587,6 +587,10 @@ def prepare_observation(obs, resize_size):
     observation = {
         "full_image": img_resized,
         "wrist_image": wrist_resized,
+        # Preserve the decoded environment frames for HPCM.  The normal fields
+        # remain unchanged because the OpenVLA processor is still used to build
+        # the remaining model inputs.
+        "_hpcm_raw_images": [img, wrist_img],
         "state": np.concatenate(
             (obs["robot0_eef_pos"], quat2axisangle(obs["robot0_eef_quat"]), obs["robot0_gripper_qpos"])
         ),

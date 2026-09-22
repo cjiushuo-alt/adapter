@@ -8,8 +8,9 @@ import logging
 import sys
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -55,6 +56,36 @@ class VisionBackboneWrapper(nn.Module):
         if callable(self.num_images_in_input):
             self.num_images_in_input = 1
         self._num_patches = 256
+        self._pending_raw_images: Optional[torch.Tensor] = None
+        self._logged_raw_input = False
+
+    def set_raw_images(self, images: Sequence[np.ndarray]) -> None:
+        """Stage raw LIBERO RGB frames for the next vision forward pass.
+
+        The normal OpenVLA processor still builds the language/model inputs, but
+        its 224px/JPEG/center-cropped pixel tensor is not a valid HPCM input: the
+        adapter was trained from the decoded 256px RGB frames normalized directly
+        to [-1, 1].  This one-shot side channel preserves that training contract.
+        """
+        if not images:
+            raise ValueError("set_raw_images requires at least one RGB image")
+
+        tensors = []
+        for index, image in enumerate(images):
+            array = np.asarray(image)
+            if array.shape != (256, 256, 3):
+                raise ValueError(
+                    f"Raw HPCM image {index} must have shape (256, 256, 3), got {array.shape}. "
+                    "Keep LIBERO env_img_res=256 to match adapter training."
+                )
+            if array.dtype != np.uint8:
+                raise TypeError(f"Raw HPCM image {index} must be uint8, got {array.dtype}")
+            tensor = torch.from_numpy(np.ascontiguousarray(array)).permute(2, 0, 1)
+            tensors.append(tensor)
+
+        # Keep the staged tensor on CPU so rollout state does not occupy GPU
+        # memory before predict_action invokes the vision backbone.
+        self._pending_raw_images = torch.stack(tensors).float().div_(127.5).sub_(1.0)
 
     def get_image_transform(self):
         return self.image_transform
@@ -81,14 +112,36 @@ class VisionBackboneWrapper(nn.Module):
         B, C, H, W = pixel_values.shape
         channels_per_image = 6
         num_images = C // channels_per_image
-        x_reshaped = pixel_values.view(B, num_images, channels_per_image, H, W)
-        x_rgb = x_reshaped[:, :, 3:, :, :]
-        x_flat = x_rgb.reshape(B * num_images, 3, H, W)
-        # 与 CGIC 一致：resize 到 256x256，避免 HPCM/Adapter 输入分辨率与训练不一致导致成功率为 0
-        if H != 256 or W != 256:
-            x_flat = torch.nn.functional.interpolate(
-                x_flat, size=(256, 256), mode="bicubic", align_corners=False
+        if self._pending_raw_images is not None:
+            x_flat = self._pending_raw_images
+            self._pending_raw_images = None
+            expected = B * num_images
+            if x_flat.shape[0] != expected:
+                raise ValueError(
+                    f"Staged {x_flat.shape[0]} raw HPCM images but processed input expects {expected} "
+                    f"(batch={B}, num_images={num_images})"
+                )
+            x_flat = x_flat.to(device=pixel_values.device, dtype=torch.float32, non_blocking=True)
+            if not self._logged_raw_input:
+                logger.info(
+                    "HPCM raw-input bypass active: using decoded 256x256 RGB without "
+                    "OpenVLA JPEG/224px/center-crop preprocessing"
+                )
+                self._logged_raw_input = True
+        else:
+            # Compatibility fallback for callers that do not provide raw frames.
+            # Formal LIBERO evaluation must use set_raw_images() instead.
+            logger.warning(
+                "No raw HPCM images staged; falling back to processor pixel_values. "
+                "This path does not match adapter training preprocessing."
             )
+            x_reshaped = pixel_values.view(B, num_images, channels_per_image, H, W)
+            x_rgb = x_reshaped[:, :, 3:, :, :]
+            x_flat = x_rgb.reshape(B * num_images, 3, H, W)
+            if H != 256 or W != 256:
+                x_flat = torch.nn.functional.interpolate(
+                    x_flat, size=(256, 256), mode="bicubic", align_corners=False
+                )
 
         with torch.no_grad():
             results = self.model(image=x_flat)
