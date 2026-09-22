@@ -70,6 +70,23 @@ def _processor_pixels(processor, cfg, observation, task_description):
     return torch.cat([item["pixel_values"] for item in encoded], dim=1)
 
 
+def _split_fused_pixels(pixel_values: torch.Tensor):
+    batch, channels, height, width = pixel_values.shape
+    num_images = channels // 6
+    fused = pixel_values.view(batch, num_images, 6, height, width)
+    dino = fused[:, :, :3].reshape(batch * num_images, 3, height, width)
+    siglip = fused[:, :, 3:].reshape(batch * num_images, 3, height, width)
+    return dino, siglip
+
+
+def _layer2_targets(backbone, pixel_values: torch.Tensor):
+    dino_pixels, siglip_pixels = _split_fused_pixels(pixel_values)
+    with torch.inference_mode():
+        dino = backbone.featurizer.get_intermediate_layers(dino_pixels, n={2})[0]
+        siglip = backbone.fused_featurizer.get_intermediate_layers(siglip_pixels, n={2})[0]
+    return dino.detach().cpu(), siglip.detach().cpu()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, required=True)
@@ -110,6 +127,7 @@ def main() -> None:
     proprio_projector = get_proprio_projector(cfg, intact.llm_dim, proprio_dim=8)
     pixel_values = _processor_pixels(processor, cfg, observation, task_description)
     with torch.inference_mode():
+        target_dino, target_siglip = _layer2_targets(intact.vision_backbone, pixel_values)
         intact_features = intact.vision_backbone(pixel_values).detach().cpu()
         intact_actions = np.asarray(
             get_vla_action(
@@ -139,6 +157,14 @@ def main() -> None:
         device="cuda",
     )
     with torch.inference_mode():
+        _, hpcm_input = _split_fused_pixels(pixel_values)
+        if hpcm_input.shape[-2:] != (256, 256):
+            hpcm_input = torch.nn.functional.interpolate(
+                hpcm_input, size=(256, 256), mode="bicubic", align_corners=False
+            )
+        splice_details = spliced.vision_backbone.model(image=hpcm_input)
+        aligned_dino = splice_details["aligned_dino_features"].squeeze(1).detach().cpu()
+        aligned_siglip = splice_details["aligned_siglip_features"].squeeze(1).detach().cpu()
         spliced_features = spliced.vision_backbone(pixel_values).detach().cpu()
         spliced_actions = np.asarray(
             get_vla_action(
@@ -156,6 +182,14 @@ def main() -> None:
         "preprocessing": "historical_spatial_processor_path",
         "feature_shape": list(intact_features.shape),
         "features": {
+            "boundary_layer2": {
+                "dino": _feature_metrics(target_dino, aligned_dino),
+                "siglip": _feature_metrics(target_siglip, aligned_siglip),
+            },
+            "posterior_output": {
+                "dino": _feature_metrics(intact_features[..., :1024], spliced_features[..., :1024]),
+                "siglip": _feature_metrics(intact_features[..., 1024:], spliced_features[..., 1024:]),
+            },
             "fused": _feature_metrics(intact_features, spliced_features),
             "dino": _feature_metrics(intact_features[..., :1024], spliced_features[..., :1024]),
             "siglip": _feature_metrics(intact_features[..., 1024:], spliced_features[..., 1024:]),

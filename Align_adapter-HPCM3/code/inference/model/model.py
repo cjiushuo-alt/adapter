@@ -58,6 +58,7 @@ class VisionBackboneWrapper(nn.Module):
         self._num_patches = 256
         self._pending_raw_images: Optional[torch.Tensor] = None
         self._logged_raw_input = False
+        self._logged_fallback_input = False
 
     def set_raw_images(self, images: Sequence[np.ndarray]) -> None:
         """Stage raw LIBERO RGB frames for the next vision forward pass.
@@ -131,10 +132,12 @@ class VisionBackboneWrapper(nn.Module):
         else:
             # Compatibility fallback for callers that do not provide raw frames.
             # Formal LIBERO evaluation must use set_raw_images() instead.
-            logger.warning(
-                "No raw HPCM images staged; falling back to processor pixel_values. "
-                "This path does not match adapter training preprocessing."
-            )
+            if not self._logged_fallback_input:
+                logger.info(
+                    "HPCM historical Spatial input path active: using processor "
+                    "pixel_values and bicubic resize to 256x256"
+                )
+                self._logged_fallback_input = True
             x_reshaped = pixel_values.view(B, num_images, channels_per_image, H, W)
             x_rgb = x_reshaped[:, :, 3:, :, :]
             x_flat = x_rgb.reshape(B * num_images, 3, H, W)
