@@ -81,8 +81,14 @@ def _split_fused_pixels(pixel_values: torch.Tensor):
 
 def _layer2_targets(backbone, dino_pixels: torch.Tensor, siglip_pixels: torch.Tensor):
     with torch.inference_mode():
-        dino = backbone.featurizer.get_intermediate_layers(dino_pixels, n={2})[0]
-        siglip = backbone.fused_featurizer.get_intermediate_layers(siglip_pixels, n={2})[0]
+        dino_dtype = next(backbone.featurizer.parameters()).dtype
+        siglip_dtype = next(backbone.fused_featurizer.parameters()).dtype
+        dino = backbone.featurizer.get_intermediate_layers(
+            dino_pixels.to(dtype=dino_dtype), n={2}
+        )[0]
+        siglip = backbone.fused_featurizer.get_intermediate_layers(
+            siglip_pixels.to(dtype=siglip_dtype), n={2}
+        )[0]
     return dino.detach().cpu(), siglip.detach().cpu()
 
 
