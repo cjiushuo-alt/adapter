@@ -73,6 +73,7 @@ from experiments.robot.openvla_utils import (
     get_action_head,
     get_processor,
     get_proprio_projector,
+    get_vla,
     resize_image_for_policy,
 )
 from experiments.robot.robot_utils import (
@@ -146,6 +147,10 @@ class VisionBackboneConfig:
 class ModelConfig:
     model_family: str = "openvla"
     pretrained_checkpoint: str = ""
+    # Diagnostic control: False evaluates the intact VLA with the exact same
+    # LIBERO loop, processor, action head and initial states.
+    use_hpcm_adapter: bool = True
+    preserve_checkpoint_files: bool = True
     use_l1_regression: bool = True
     use_minivlm: bool = True
     num_diffusion_steps: int = 50
@@ -397,7 +402,11 @@ def check_unnorm_key(cfg: InferenceConfig, model) -> None:
 
 def initialize_model(cfg: InferenceConfig):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = get_custom_model(cfg, device)
+    if cfg.model.use_hpcm_adapter:
+        model = get_custom_model(cfg, device)
+    else:
+        logger.info("Diagnostic control enabled: evaluating intact VLA vision backbone")
+        model = get_vla(cfg.model)
     model = model.to(device)
     model.eval()
     if hasattr(model, "set_version"):
