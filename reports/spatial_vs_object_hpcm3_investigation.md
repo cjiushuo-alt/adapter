@@ -1,7 +1,9 @@
 # HPCM3：Spatial 成功而 Object 失败的对照调查
 
-日期：2026-09-24  
-分支：`exp/hpcm3-object-dist`  
+日期：2026-09-24
+
+分支：`exp/hpcm3-object-dist`
+
 结论基于本地 checkpoint、训练日志、W&B 指标、逐 tensor 权重对比、拼接诊断和受保护 rollout；不是根据 README 推测。
 
 ## 结论摘要
