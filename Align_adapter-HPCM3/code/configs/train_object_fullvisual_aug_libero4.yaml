@@ -80,7 +80,8 @@ training:
   max_steps: -1
   gradient_clip_val: 1.0
   gradient_clip_algorithm: "norm"
-  precision: "16-mixed"
+  # This repository's Lightning version uses the legacy mixed-FP16 spelling.
+  precision: "16"
   accumulate_grad_batches: 4
   num_sanity_val_steps: 2
 
