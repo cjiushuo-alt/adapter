@@ -40,8 +40,8 @@ data:
     - "libero_spatial_no_noops"
   image_keys: ["image", "wrist_image"]
   image_size: 256
-  # Conservative starting point for a 24 GiB RTX 3090; effective batch remains 32.
-  batch_size: 8
+  # Match the successful Spatial optimization batch on the 24 GiB RTX 3090.
+  batch_size: 32
   num_workers: 8
   pin_memory: true
   persistent_workers: true
@@ -82,7 +82,7 @@ training:
   gradient_clip_algorithm: "norm"
   # This repository's Lightning version uses the legacy mixed-FP16 spelling.
   precision: "16"
-  accumulate_grad_batches: 4
+  accumulate_grad_batches: 1
   num_sanity_val_steps: 2
 
   optimizer:
