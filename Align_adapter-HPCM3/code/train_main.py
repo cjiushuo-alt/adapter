@@ -116,6 +116,11 @@ def run_train(config):
         freeze_vision_backbone=vision_cfg.freeze_backbone,
         train_adapter=train_adapter,
         loss_config=dict(config.loss) if hasattr(config, "loss") else None,
+        augmentation_config=(
+            OmegaConf.to_container(config.augmentation, resolve=True)
+            if hasattr(config, "augmentation")
+            else None
+        ),
         optimizer_config=dict(training_cfg.optimizer) if hasattr(training_cfg, "optimizer") else None,
         lr_scheduler_config=dict(training_cfg.lr_scheduler) if hasattr(training_cfg, "lr_scheduler") else None,
         learning_rate=training_cfg.optimizer.get("lr") if hasattr(training_cfg, "optimizer") else None,
@@ -228,6 +233,7 @@ def run_train(config):
         accelerator=config.get("device", {}).get("accelerator", "gpu"),
         devices=config.get("device", {}).get("devices", 1),
         strategy=config.get("device", {}).get("strategy", "auto"),
+        num_sanity_val_steps=training_cfg.get("num_sanity_val_steps", 2),
     )
     if val_interval is None:
         trainer_kwargs["check_val_every_n_epoch"] = training_cfg.get("validation", {}).get("every_n_epochs", 1)

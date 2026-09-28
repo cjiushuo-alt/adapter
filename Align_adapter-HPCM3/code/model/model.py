@@ -8,6 +8,7 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
+from torch.utils.checkpoint import checkpoint as activation_checkpoint
 from pathlib import Path
 from typing import Dict, Tuple, Optional, Any
 import sys
@@ -21,7 +22,8 @@ for _p in (project_root, _hpcm2_root):
         sys.path.insert(0, str(_p))
 
 from .adapter import Adapter
-from Align_adapter.model.vision_truncation import build_truncated_vision_backbone
+from .image_augmentation import VLAImageAugmentation
+from .vision_truncation import build_truncated_vision_backbone
 from Align_adapter.tools.losses import CombinedDistLoss
 from dataset.hpcm_encoder import HPCMEncoder
 
@@ -46,7 +48,7 @@ class AlignModel(pl.LightningModule):
         # Vision Backbone 配置
         vision_backbone_id: str = "dinosiglip-vit-so-224px",
         vision_backbone_checkpoint: Optional[Path] = None,
-        vision_backbone_max_layer: int = 2,
+        vision_backbone_max_layer: Optional[int] = 2,
         image_resize_strategy: str = "letterbox",
         image_sequence_len: int = 1,
         # Adapter 配置
@@ -56,6 +58,7 @@ class AlignModel(pl.LightningModule):
         train_adapter: bool = True,
         # 损失与优化
         loss_config: Optional[Dict[str, Any]] = None,
+        augmentation_config: Optional[Dict[str, Any]] = None,
         optimizer_config: Optional[Dict[str, Any]] = None,
         lr_scheduler_config: Optional[Dict[str, Any]] = None,
         learning_rate: Optional[float] = None,
@@ -146,6 +149,17 @@ class AlignModel(pl.LightningModule):
                 "dino_loss_weight": 1.0,
                 "reduction": "mean",
             }
+
+        self.loss_scope = loss_config.get("scope", "boundary")
+        if self.loss_scope not in {"boundary", "full_visual"}:
+            raise ValueError(f"Unsupported loss scope: {self.loss_scope}")
+        self.posterior_start_layer = int(loss_config.get("posterior_start_layer", 3))
+        self.posterior_gradient_checkpointing = bool(
+            loss_config.get("posterior_gradient_checkpointing", False)
+        )
+        if self.loss_scope == "full_visual" and vision_backbone_max_layer is not None:
+            raise ValueError("full_visual loss 必须设置 model.vision.max_layer=null，加载完整视觉塔")
+        self.image_augmentation = VLAImageAugmentation(augmentation_config)
         
         if loss_config.get("type", "dist") == "dist":
             self.loss_fn = CombinedDistLoss(
@@ -167,6 +181,13 @@ class AlignModel(pl.LightningModule):
         self.freeze_hpcm_encoder = freeze_hpcm_encoder
         self.freeze_vision_backbone = freeze_vision_backbone
         self.train_adapter = train_adapter
+
+        print(
+            f"✓ Loss scope: {self.loss_scope}; posterior start layer: "
+            f"{self.posterior_start_layer}; gradient checkpointing: "
+            f"{self.posterior_gradient_checkpointing}"
+        )
+        print(f"✓ VLA-compatible train augmentation: {self.image_augmentation.enabled}")
         
         print("\n" + "=" * 80)
         print("✓ 模型初始化完成")
@@ -217,102 +238,82 @@ class AlignModel(pl.LightningModule):
             y_hat = torch.nn.functional.interpolate(y_hat, size=(16, 16), mode="bilinear", align_corners=False)
         return y_hat
     
+    def _prepare_vision_inputs(self, images: torch.Tensor) -> Dict[str, torch.Tensor]:
+        if images.ndim == 5:
+            batch, views, channels, height, width = images.shape
+            images = images.view(batch * views, channels, height, width)
+        if images.shape[-2:] != (224, 224):
+            images = torch.nn.functional.interpolate(
+                images, size=(224, 224), mode="bilinear", align_corners=False
+            )
+        images_01 = images.add(1.0).mul(0.5)
+        dino_mean = images.new_tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1)
+        dino_std = images.new_tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1)
+        return {
+            "dino": (images_01 - dino_mean) / dino_std,
+            "siglip": images_01.mul(2.0).sub(1.0),
+        }
+
+    def _run_frozen_posterior(self, featurizer: nn.Module, tokens: torch.Tensor) -> torch.Tensor:
+        """Run rollout-equivalent blocks 3..penultimate with gradients to tokens."""
+        blocks = list(featurizer.blocks)
+        if self.posterior_start_layer >= len(blocks) - 1:
+            raise ValueError(
+                f"posterior_start_layer={self.posterior_start_layer} 与 {len(blocks)} 层视觉塔不兼容"
+            )
+        output = tokens
+        # Prismatic uses the second-to-last full-tower block as its visual
+        # output.  The final block is intentionally excluded, matching rollout.
+        for block in blocks[self.posterior_start_layer : -1]:
+            if self.training and self.posterior_gradient_checkpointing and output.requires_grad:
+                output = activation_checkpoint(block, output, use_reentrant=False)
+            else:
+                output = block(output)
+        return output
+
     def forward(
         self,
         images: torch.Tensor,
         extract_hpcm_features: bool = True,
         extract_vision_features: bool = True,
     ) -> Dict[str, torch.Tensor]:
-        """
-        前向传播（与 Align_adapter 类似：仅输入图像）。
+        """Extract boundary or full-visual student/teacher feature pairs."""
+        results: Dict[str, torch.Tensor] = {}
 
-        Args:
-            images: 输入图像 (B, C, H, W) 或 (B, N, C, H, W)
-            extract_hpcm_features: 是否用 HPCM 编码器提取 y_hat 并过 Adapter
-            extract_vision_features: 是否提取 Vision 特征
-
-        Returns:
-            Dict: aligned_siglip_features, aligned_dino_features；若 extract_vision_features 则含 vision_*_features
-        """
-        results = {}
-
+        boundary_siglip = boundary_dino = None
         if extract_hpcm_features:
             hpcm_features = self.extract_hpcm_features(images)
-            aligned_siglip, aligned_dino = self.adapter(hpcm_features)
-            results["aligned_siglip_features"] = aligned_siglip
-            results["aligned_dino_features"] = aligned_dino
+            boundary_siglip, boundary_dino = self.adapter(hpcm_features)
+            results["boundary_siglip_features"] = boundary_siglip
+            results["boundary_dino_features"] = boundary_dino
 
-        # ========== Vision Backbone ==========
         if extract_vision_features:
-            # Vision backbone只需要提供特征值，不需要梯度
-            with torch.set_grad_enabled(False):
-                # 处理图像输入
-                if len(images.shape) == 5:  # (B, N, C, H, W)
-                    B, N, C, H, W = images.shape
-                    images = images.view(B * N, C, H, W)
-                
-                # Vision backbone期望224×224的图像，但数据集返回的是256×256
-                # Resize到224×224
-                if images.shape[-1] != 224 or images.shape[-2] != 224:
-                    images_224 = torch.nn.functional.interpolate(
-                        images,
-                        size=(224, 224),
-                        mode='bilinear',
-                        align_corners=False
-                    )
-                else:
-                    images_224 = images
-                
-                # 归一化处理：数据集返回的是[-1, 1]范围，需要转换为各自模型期望的归一化
-                # 1. 将[-1, 1]转换为[0, 1]
-                images_224_01 = (images_224 + 1.0) / 2.0
-                
-                # 注意：DinoSigLIP的forward方法期望Dict[str, torch.Tensor]格式
-                # 包含"dino"和"siglip"两个键，每个值都是tensor
-                # DINOv2和SigLIP使用不同的归一化参数，需要分别处理
-                if self.vision_backbone_id.startswith("dinosiglip"):
-                    # DINOv2归一化：ImageNet归一化
-                    # Mean: [0.485, 0.456, 0.406], Std: [0.229, 0.224, 0.225]
-                    dino_mean = torch.tensor([0.485, 0.456, 0.406], device=images_224.device, dtype=images_224.dtype).view(1, 3, 1, 1)
-                    dino_std = torch.tensor([0.229, 0.224, 0.225], device=images_224.device, dtype=images_224.dtype).view(1, 3, 1, 1)
-                    images_dino = (images_224_01 - dino_mean) / dino_std
-                    
-                    # SigLIP归一化：mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]
-                    # 这实际上是将[0, 1]转换为[-1, 1]：(x - 0.5) / 0.5 = 2x - 1
-                    siglip_mean = torch.tensor([0.5, 0.5, 0.5], device=images_224.device, dtype=images_224.dtype).view(1, 3, 1, 1)
-                    siglip_std = torch.tensor([0.5, 0.5, 0.5], device=images_224.device, dtype=images_224.dtype).view(1, 3, 1, 1)
-                    images_siglip = (images_224_01 - siglip_mean) / siglip_std
-                    
-                    processed_images = {"dino": images_dino, "siglip": images_siglip}
-                else:
-                    # 对于其他vision backbone，使用ImageNet归一化（默认）
-                    imagenet_mean = torch.tensor([0.485, 0.456, 0.406], device=images_224.device, dtype=images_224.dtype).view(1, 3, 1, 1)
-                    imagenet_std = torch.tensor([0.229, 0.224, 0.225], device=images_224.device, dtype=images_224.dtype).view(1, 3, 1, 1)
-                    processed_images = (images_224_01 - imagenet_mean) / imagenet_std
-                
-                # 提取vision特征（前3层）
-                # Vision backbone只需要提供特征值，不需要梯度
+            if not self.vision_backbone_id.startswith("dinosiglip"):
+                raise ValueError("full/boundary distillation currently requires a DinoSigLIP backbone")
+            processed_images = self._prepare_vision_inputs(images)
+            # Teacher targets are constants.  The same frozen modules are then
+            # reused below for the student posterior with autograd enabled.
+            with torch.no_grad():
                 vision_features = self.vision_backbone(processed_images)
-                
-                # 分离SigLIP和DINOv2特征（如果是融合的）
-                if self.vision_backbone_id.startswith("dinosiglip"):
-                    # DinoSigLIP输出是concatenated的
-                    # forward方法中拼接顺序: torch.cat([dino_patches, siglip_patches], dim=2)
-                    # 注意：虽然变量名叫dino_featurizer和siglip_featurizer，但实际维度是：
-                    # - dino_featurizer.embed_dim = 1024
-                    # - siglip_featurizer.embed_dim = 1152
-                    # 所以拼接后的顺序是: (B, N, 1024 + 1152)
-                    # 前1024维 = dino_featurizer的输出
-                    # 后1152维 = siglip_featurizer的输出
-                    dino_dim = self.vision_backbone.dino_featurizer.embed_dim  # 1024
-                    siglip_dim = self.vision_backbone.siglip_featurizer.embed_dim  # 1152
-                    # 前dino_dim维是dino_featurizer的输出，后siglip_dim维是siglip_featurizer的输出
-                    vision_dino = vision_features[..., :dino_dim]
-                    vision_siglip = vision_features[..., dino_dim:]
-                    results["vision_dino_features"] = vision_dino
-                    results["vision_siglip_features"] = vision_siglip
-                else:
-                    results["vision_features"] = vision_features
+            dino_dim = self.vision_backbone.dino_featurizer.embed_dim
+            vision_dino = vision_features[..., :dino_dim]
+            vision_siglip = vision_features[..., dino_dim:]
+            results["vision_dino_features"] = vision_dino
+            results["vision_siglip_features"] = vision_siglip
+
+        if extract_hpcm_features:
+            if self.loss_scope == "full_visual":
+                if not extract_vision_features:
+                    raise ValueError("full_visual loss requires the full vision backbone")
+                results["aligned_dino_features"] = self._run_frozen_posterior(
+                    self.vision_backbone.dino_featurizer, boundary_dino
+                )
+                results["aligned_siglip_features"] = self._run_frozen_posterior(
+                    self.vision_backbone.siglip_featurizer, boundary_siglip
+                )
+            else:
+                results["aligned_dino_features"] = boundary_dino
+                results["aligned_siglip_features"] = boundary_siglip
 
         return results
 
@@ -354,7 +355,11 @@ class AlignModel(pl.LightningModule):
             raise ValueError("batch 需为 dict，包含 image 或 images")
         if images is None:
             raise ValueError("batch 中未找到 image 或 images")
-        
+
+        # One sampled augmentation is shared by the HPCM student and vision
+        # teacher.  Applying two independent transforms would make the target
+        # itself inconsistent and turn the objective into cross-view matching.
+        images = self.image_augmentation(images)
         results = self.forward(images, extract_hpcm_features=True, extract_vision_features=True)
         
         aligned_siglip = results["aligned_siglip_features"]
@@ -386,7 +391,7 @@ class AlignModel(pl.LightningModule):
         return loss_dict["total_loss"]
     
     def validation_step(self, batch, batch_idx):
-        """验证步骤。batch 为 dict：image 或 images，HPCM 在 forward 内实时提取。"""
+        """Log clean loss and deterministic augmented loss for model selection."""
         if isinstance(batch, dict):
             images = batch.get("image", batch.get("images"))
         else:
@@ -394,28 +399,48 @@ class AlignModel(pl.LightningModule):
         if images is None:
             raise ValueError("batch 中未找到 image 或 images")
         
+        clean = self._distillation_loss(images)
+        self._log_validation_losses("clean", clean)
+
+        selected = clean
+        if self.image_augmentation.enabled and self.image_augmentation.validation_enabled:
+            augmented_images = self.image_augmentation(
+                images, seed=self.image_augmentation.validation_seed + batch_idx
+            )
+            augmented = self._distillation_loss(augmented_images)
+            self._log_validation_losses("aug", augmented)
+            selected = augmented
+
+        # Backward-compatible aliases.  Checkpointing and early stopping use
+        # deterministic augmented validation when augmentation is enabled.
+        self.log("val/total_loss", selected["total_loss"], prog_bar=True, logger=True, on_step=False, on_epoch=True, sync_dist=True)
+        self.log("val/siglip_loss", selected["siglip_loss"], prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
+        self.log("val/dino_loss", selected["dino_loss"], prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
+        self.log("val_loss", selected["total_loss"], prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
+        return selected["total_loss"]
+
+    def _distillation_loss(self, images: torch.Tensor) -> Dict[str, torch.Tensor]:
         results = self.forward(images, extract_hpcm_features=True, extract_vision_features=True)
-        
-        aligned_siglip = results["aligned_siglip_features"]
-        aligned_dino = results["aligned_dino_features"]
-        vision_siglip = results["vision_siglip_features"]
-        vision_dino = results["vision_dino_features"]
-        
-        loss_dict = self.loss_fn(
-            aligned_siglip=aligned_siglip,
-            aligned_dino=aligned_dino,
-            vision_siglip=vision_siglip,
-            vision_dino=vision_dino,
+        return self.loss_fn(
+            aligned_siglip=results["aligned_siglip_features"],
+            aligned_dino=results["aligned_dino_features"],
+            vision_siglip=results["vision_siglip_features"],
+            vision_dino=results["vision_dino_features"],
         )
-        
-        # 记录损失，所有loss都记录到wandb
-        self.log("val/total_loss", loss_dict["total_loss"], prog_bar=True, logger=True, on_step=False, on_epoch=True, sync_dist=True)
-        self.log("val/siglip_loss", loss_dict["siglip_loss"], prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
-        self.log("val/dino_loss", loss_dict["dino_loss"], prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
-        # 同时记录val_loss（用于checkpoint监控）
-        self.log("val_loss", loss_dict["total_loss"], prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
-        
-        return loss_dict["total_loss"]
+
+    def _log_validation_losses(
+        self, prefix: str, losses: Dict[str, torch.Tensor]
+    ) -> None:
+        for name in ("total_loss", "siglip_loss", "dino_loss"):
+            self.log(
+                f"val/{prefix}_{name}",
+                losses[name],
+                prog_bar=False,
+                logger=True,
+                on_step=False,
+                on_epoch=True,
+                sync_dist=True,
+            )
     
     def configure_optimizers(self):
         """

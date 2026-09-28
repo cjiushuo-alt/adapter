@@ -47,6 +47,7 @@ class LiberoImageDataset(Dataset):
         seed: int = 42,
         split_unit: str = "trajectory",
         split_manifest_path: Optional[str] = None,
+        max_samples: Optional[int] = None,
     ):
         """
         Args:
@@ -58,6 +59,7 @@ class LiberoImageDataset(Dataset):
             seed: 划分 train/val 的随机种子
             split_unit: trajectory（论文实验推荐）或 frame（仅兼容旧实验）
             split_manifest_path: trajectory 划分清单。首次运行原子生成，之后严格复用。
+            max_samples: 可选的确定性样本上限，主要用于控制昂贵的完整视觉塔验证。
         """
         if image_keys is None:
             image_keys = ["image", "wrist_image"]
@@ -126,6 +128,15 @@ class LiberoImageDataset(Dataset):
             split_idx = int(len(indices) * train_ratio)
             self.indices = indices[:split_idx] if is_train else indices[split_idx:]
             split_desc = "frame (legacy)"
+
+        if max_samples is not None:
+            if max_samples <= 0:
+                raise ValueError(f"max_samples 必须 > 0，得到: {max_samples}")
+            if len(self.indices) > max_samples:
+                sampled = list(self.indices)
+                random.Random(seed + (0 if is_train else 1)).shuffle(sampled)
+                self.indices = sorted(sampled[:max_samples])
+                split_desc += f"; deterministic cap={max_samples}"
 
         print(f"LiberoImageDataset ({'训练' if is_train else '验证'}):")
         print(f"  总图像数: {len(all_image_paths)}")
@@ -260,6 +271,7 @@ class LightningDataModule(pl.LightningDataModule):
         self.seed = config.get("seed", 42)
         self.split_unit = config.get("split_unit", "trajectory")
         self.split_manifest_path = config.get("split_manifest_path")
+        self.val_max_samples = config.get("val_max_samples")
 
     def setup(self, stage: Optional[str] = None):
         pass
@@ -298,6 +310,7 @@ class LightningDataModule(pl.LightningDataModule):
             seed=self.seed,
             split_unit=self.split_unit,
             split_manifest_path=self.split_manifest_path,
+            max_samples=self.val_max_samples,
         )
 
 
