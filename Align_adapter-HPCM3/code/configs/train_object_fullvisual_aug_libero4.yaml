@@ -118,8 +118,10 @@ training:
     every_n_epochs: 1
 
   resume:
-    enabled: false
-    state_ckpt_path: null
+    # Restart after the 2026-09-29 host reboot; restore optimizer, scheduler,
+    # checkpoint ranking and early stopping state from the last full epoch.
+    enabled: true
+    state_ckpt_path: "/media/cjs/shared/linux/Align_adapter/hpcm3_object_fullvisual_aug_libero4/checkpoints/last.ckpt"
     adapter_only_path: null
     strict: true
 
@@ -128,7 +130,9 @@ training:
 
 wandb:
   project: "hpcm-suite-dist-adapter"
-  experiment_name: "hpcm3-object-fullvisual-aug-libero4-seed42"
+  # The old W&B run contains unsaved Epoch 2 steps beyond this checkpoint.
+  # A new run avoids non-monotonic W&B step history after resuming at 30866.
+  experiment_name: "hpcm3-object-fullvisual-aug-libero4-resume-20261005"
   resume:
     enabled: false
     run_id: null
