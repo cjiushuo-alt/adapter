@@ -1,0 +1,20 @@
+{
+  "suite": "libero_object",
+  "reason": "success_rate_below_guard_threshold",
+  "episodes": 5,
+  "success_episodes": 0,
+  "success_rate": 0.0,
+  "guard": {
+    "enabled": true,
+    "min_episodes": 5,
+    "min_success_rate": 0.2
+  },
+  "last_task": {
+    "task_id": 0,
+    "task_description": "pick up the alphabet soup and place it in the basket",
+    "episodes": 5,
+    "success_episodes": 0,
+    "success_rate": 0.0,
+    "exact_train_frame_matches": 0
+  }
+}

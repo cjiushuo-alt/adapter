@@ -1,0 +1,39 @@
+Git metadata: {'commit': '6c382db5e971844c7bc0c7f8c4e466218c365bff', 'dirty': True}
+Fixed seed: 7
+VLA action unnorm key: libero_object_no_noops
+Checkpoint metadata: {"hpcm3_adapter": {"path": "/media/cjs/shared/linux/Align_adapter/hpcm3_object_fullvisual_aug_libero4/eval/adapter-epoch10.pt", "sha256": "55fdf7c93f1a70862279a072a27133e50864df7d4a3b07b5ff132d2cfef205f9"}, "hpcm": {"path": "/home/cjs/study/VLA/VLA-Adapter/HPCM/ckpt/0.0018.pth.tar", "sha256": "dc7a6c0f4b93f2294df1ce5fc49a21ab5d8107b91c14e0ee819a9f8dbbb30964"}, "vla": {"path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro", "files": {"model.safetensors": {"path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro/model.safetensors", "sha256": "c83c07b9c1d4b527ba5d0f821b28c340c745f4aec282a4953511d494c536d604"}, "action_head--checkpoint.pt": {"path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro/action_head--checkpoint.pt", "sha256": "dd5642994a89f81dfe33cdca460479972548de8eaa26aacdbb3b0a7516b2d723"}, "proprio_projector--checkpoint.pt": {"path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro/proprio_projector--checkpoint.pt", "sha256": "3201fd9f18cb178958d656ac2ddd7163f8a7853535856243907f5b633af7c14c"}}}}
+Task suite: libero_object
+Using default initial states
+
+Task: pick up the alphabet soup and place it in the basket
+Starting episode 1...
+Success: False
+# episodes so far: 1
+# successes: 0 (0.0%)
+
+Task: pick up the alphabet soup and place it in the basket
+Starting episode 2...
+Success: False
+# episodes so far: 2
+# successes: 0 (0.0%)
+
+Task: pick up the alphabet soup and place it in the basket
+Starting episode 3...
+Success: False
+# episodes so far: 3
+# successes: 0 (0.0%)
+
+Task: pick up the alphabet soup and place it in the basket
+Starting episode 4...
+Success: False
+# episodes so far: 4
+# successes: 0 (0.0%)
+
+Task: pick up the alphabet soup and place it in the basket
+Starting episode 5...
+Success: False
+# episodes so far: 5
+# successes: 0 (0.0%)
+REVIEW REQUIRED: success rate 0.0000 after 5 episodes is below guard threshold 0.2000
+Current task success rate: 0.0
+Current total success rate: 0.0
