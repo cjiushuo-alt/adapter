@@ -126,7 +126,8 @@ def main() -> None:
     raw = yaml.safe_load(args.config.read_text())
     cfg = config_from_yaml(raw)
     count = int(raw["experiment"]["episodes"])
-    assert count == 5, "First stage is exactly five paired episodes"
+    assert count in (5, 20), "Supported screening sizes are five and twenty episodes"
+    reference_count = min(count, 5)
     assert cfg.libero.task_suite_name == "libero_object" and cfg.libero.initial_states_path == "DEFAULT"
     assert cfg.libero.num_steps_wait == 10 and cfg.libero.env_img_res == 256
     assert cfg.model.center_crop and cfg.model.num_open_loop_steps == 8 and cfg.seed == 7
@@ -134,15 +135,15 @@ def main() -> None:
     hpcm_path = Path(cfg.model.hpcm.checkpoint)
     adapter_path = Path(cfg.model.adapter.checkpoint)
     vla_dir = Path(cfg.model.pretrained_checkpoint)
-    a, c = validate_controls(Path(paths["baseline_results"]), Path(paths["adapter_results"]), count)
-    assert all(bool(row["success"]) for row in a[:count])
-    assert not any(bool(row["success"]) for row in c[:count])
+    a, c = validate_controls(Path(paths["baseline_results"]), Path(paths["adapter_results"]), reference_count)
+    assert all(bool(row["success"]) for row in a[:reference_count])
+    assert not any(bool(row["success"]) for row in c[:reference_count])
     set_seed_everywhere(cfg.seed)
     codec = ReconstructionControl(hpcm_path, Path(cfg.model.hpcm.hpcm_root), cfg.model.hpcm.scale_table_levels)
 
     suite = benchmark.get_benchmark_dict()["libero_object"]()
     states = suite.get_task_init_states(0)
-    for index in range(count):
+    for index in range(reference_count):
         assert evaluator._sha256_array(states[index]) == a[index]["initial_state_sha256"]
     env, description = evaluator.get_libero_env(suite.get_task(0), cfg.model.model_family, resolution=256)
     try:
@@ -181,6 +182,7 @@ def main() -> None:
                 "C": {"path": paths["adapter_results"], "sha256": sha256(Path(paths["adapter_results"]))},
             },
             "protocol": "HPCM.compress/decompress actual y+z bitstreams on both raw 256px views at every policy query; then intact Object-Pro native JPEG/Lanczos3 224px+center-crop processor; 10 dummy steps; eight-action queue",
+            "reference_A_C_episodes": reference_count,
         }
         (out / "provenance.json").write_text(json.dumps(provenance, indent=2) + "\n")
         model, action_head, proprio_projector, noisy_action_projector, processor = evaluator.initialize_model(cfg)
@@ -217,7 +219,7 @@ def main() -> None:
             for index in range(count):
                 current_episode = index
                 current_frames = []
-                print(f"Starting paired B episode {index}/4", flush=True)
+                print(f"Starting B episode {index}/{count - 1}", flush=True)
                 episode_log = io.StringIO()
                 success, _, _ = evaluator.run_episode(
                     cfg, env, description, model, resize_size, processor,
@@ -232,7 +234,9 @@ def main() -> None:
                 record = {
                     "suite": "libero_object", "task_id": 0, "episode_index": index,
                     "initial_state_sha256": evaluator._sha256_array(states[index]),
-                    "A_success": bool(a[index]["success"]), "B_success": bool(success), "C_success": bool(c[index]["success"]),
+                    "A_success": bool(a[index]["success"]) if index < reference_count else None,
+                    "B_success": bool(success),
+                    "C_success": bool(c[index]["success"]) if index < reference_count else None,
                     "policy_queries": len(current_frames) // 2, "frames": len(current_frames),
                     "agent_psnr_db": float(np.mean([r["psnr_db"] for r in current_frames if r["view"] == "agent"])),
                     "wrist_psnr_db": float(np.mean([r["psnr_db"] for r in current_frames if r["view"] == "wrist"])),
@@ -249,8 +253,12 @@ def main() -> None:
         frames = [json.loads(line) for line in (out / "frame_metrics.jsonl").read_text().splitlines()]
         summary = {
             **provenance, "task_description": description, "episodes": len(episodes),
-            "successes": {arm: sum(row[f"{arm}_success"] for row in episodes) for arm in ("A", "B", "C")},
-            "success_rates": {arm: sum(row[f"{arm}_success"] for row in episodes) / len(episodes) for arm in ("A", "B", "C")},
+            "successes": {arm: sum(bool(row[f"{arm}_success"]) for row in episodes if row[f"{arm}_success"] is not None)
+                          for arm in ("A", "B", "C")},
+            "success_rates": {arm: sum(bool(row[f"{arm}_success"]) for row in episodes if row[f"{arm}_success"] is not None) /
+                              sum(row[f"{arm}_success"] is not None for row in episodes)
+                              for arm in ("A", "B", "C")},
+            "reference_A_C_episodes": reference_count,
             "policy_queries": len(frames) // 2, "compressed_frames": len(frames),
             "mean_psnr_db": {view: float(np.mean([r["psnr_db"] for r in frames if r["view"] == view])) for view in ("agent", "wrist")},
             "mean_actual_bpp": {view: float(np.mean([r["bpp_actual"] for r in frames if r["view"] == view])) for view in ("agent", "wrist")},

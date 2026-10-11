@@ -1,0 +1,61 @@
+{
+  "git_commit": "828b825acae40c9958e044630f898883d51526ae",
+  "seed": 7,
+  "checkpoints": {
+    "hpcm": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/HPCM/ckpt/0.0483.pth.tar",
+      "sha256": "d0ade22a2f24be655d441b9b52c8f4c7ce0a2a8e862bfb6f9b486f6a787686fe"
+    },
+    "adapter_epoch29_C_reference": {
+      "path": "/media/cjs/shared/linux/Align_adapter/hpcm3_object_fullvisual_aug_libero4/eval/adapter-epoch29.pt",
+      "sha256": "8c38aae72470af636fecb7fb3c5928428ef164c4eda25675d13c6fb6159e6a63"
+    },
+    "vla_model": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro/model.safetensors",
+      "sha256": "c83c07b9c1d4b527ba5d0f821b28c340c745f4aec282a4953511d494c536d604"
+    },
+    "action_head": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro/action_head--checkpoint.pt",
+      "sha256": "dd5642994a89f81dfe33cdca460479972548de8eaa26aacdbb3b0a7516b2d723"
+    },
+    "proprio_projector": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro/proprio_projector--checkpoint.pt",
+      "sha256": "3201fd9f18cb178958d656ac2ddd7163f8a7853535856243907f5b633af7c14c"
+    }
+  },
+  "control_files": {
+    "A": {
+      "path": "results/object_pro_intact_smoke/episode_results.jsonl",
+      "sha256": "cce59da99305a3b6e4fefbcea53ff3ba10b929f66baa8d5298b8868d41f2e1bd"
+    },
+    "C": {
+      "path": "results/hpcm3_object_fullvisual_aug_epoch29/object/episode_results.jsonl",
+      "sha256": "c749d92ab8a2e29494e4b11160093679e9827bc000b47ba40ddb53f88c2ca114"
+    }
+  },
+  "protocol": "HPCM.compress/decompress actual y+z bitstreams on both raw 256px views at every policy query; then intact Object-Pro native JPEG/Lanczos3 224px+center-crop processor; 10 dummy steps; eight-action queue",
+  "reference_A_C_episodes": 5,
+  "task_description": "pick up the alphabet soup and place it in the basket",
+  "episodes": 20,
+  "successes": {
+    "A": 5,
+    "B": 20,
+    "C": 0
+  },
+  "success_rates": {
+    "A": 1.0,
+    "B": 1.0,
+    "C": 0.0
+  },
+  "policy_queries": 363,
+  "compressed_frames": 726,
+  "mean_psnr_db": {
+    "agent": 39.026257810024816,
+    "wrist": 40.02666694839169
+  },
+  "mean_actual_bpp": {
+    "agent": 0.5559842028236914,
+    "wrist": 0.4781255380509642
+  },
+  "elapsed_seconds": 204.8211157390615
+}
