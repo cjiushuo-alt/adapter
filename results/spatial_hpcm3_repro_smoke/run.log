@@ -1,0 +1,39 @@
+Git metadata: {'commit': '12c983404532771e82b8f8cdc2df5c4c4fec7781', 'dirty': True}
+Fixed seed: 7
+VLA action unnorm key: libero_spatial_no_noops
+Checkpoint metadata: {"hpcm3_adapter": {"path": "/home/cjs/study/VLA/VLA-Adapter/Align_adapter-HPCM3/ckpt/last-v1.pt", "sha256": "2860078fd497f3453846f21f9d5ac809307e9deb2ceaf134b4153f161c83a501"}, "hpcm": {"path": "/home/cjs/study/VLA/VLA-Adapter/HPCM/ckpt/0.0018.pth.tar", "sha256": "dc7a6c0f4b93f2294df1ce5fc49a21ab5d8107b91c14e0ee819a9f8dbbb30964"}, "vla": {"path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Spatial-Pro", "files": {"model.safetensors": {"path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Spatial-Pro/model.safetensors", "sha256": "5d70e76161d92fa962c53e78e10b4af3426b6ec7e5c0ea872e7a8162c961a8d3"}, "action_head--checkpoint.pt": {"path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Spatial-Pro/action_head--checkpoint.pt", "sha256": "76aa486231ebce057aa398dc5fcecf71698b293bdcc16d7354e1ac8cb807bdb9"}, "proprio_projector--checkpoint.pt": {"path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Spatial-Pro/proprio_projector--checkpoint.pt", "sha256": "1c61a08975ffade832a2dbfa0587ef6b109ec27f66eb8124f02727aa9827008e"}}}}
+Task suite: libero_spatial
+Using default initial states
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 1...
+Success: True
+# episodes so far: 1
+# successes: 1 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 2...
+Success: True
+# episodes so far: 2
+# successes: 2 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 3...
+Success: True
+# episodes so far: 3
+# successes: 3 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 4...
+Success: True
+# episodes so far: 4
+# successes: 4 (100.0%)
+
+Task: pick up the black bowl between the plate and the ramekin and place it on the plate
+Starting episode 5...
+Success: True
+# episodes so far: 5
+# successes: 5 (100.0%)
+REVIEW REQUIRED: success rate 1.0000 after 5 episodes is below guard threshold 1.0100
+Current task success rate: 1.0
+Current total success rate: 1.0

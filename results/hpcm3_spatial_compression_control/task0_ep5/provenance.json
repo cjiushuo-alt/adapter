@@ -1,0 +1,35 @@
+{
+  "git_commit": "7692baf862b13a458c2e405c0c6a2ab28b21f19f",
+  "seed": 7,
+  "suite": "libero_spatial",
+  "task_id": 0,
+  "checkpoints": {
+    "hpcm": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/HPCM/ckpt/0.0018.pth.tar",
+      "sha256": "dc7a6c0f4b93f2294df1ce5fc49a21ab5d8107b91c14e0ee819a9f8dbbb30964"
+    },
+    "adapter_C_reference": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/Align_adapter-HPCM3/ckpt/last-v1.pt",
+      "sha256": "2860078fd497f3453846f21f9d5ac809307e9deb2ceaf134b4153f161c83a501"
+    },
+    "vla_model": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Spatial-Pro/model.safetensors",
+      "sha256": "5d70e76161d92fa962c53e78e10b4af3426b6ec7e5c0ea872e7a8162c961a8d3"
+    },
+    "action_head": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Spatial-Pro/action_head--checkpoint.pt",
+      "sha256": "76aa486231ebce057aa398dc5fcecf71698b293bdcc16d7354e1ac8cb807bdb9"
+    },
+    "proprio_projector": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Spatial-Pro/proprio_projector--checkpoint.pt",
+      "sha256": "1c61a08975ffade832a2dbfa0587ef6b109ec27f66eb8124f02727aa9827008e"
+    }
+  },
+  "historical_C": {
+    "episode_results_path": "results/spatial_hpcm3_repro_smoke/episode_results.jsonl",
+    "episode_results_sha256": "0b4d1b00f24b4084b1d1b46c3604548ec652f4eb815676d8dcf346cdb6d2094a",
+    "audit_path": "results/hpcm3_libero4/spatial/audit.jsonl",
+    "audit_sha256": "c8fe1209772df1682e22f60127e3c0c8103074367808334824d7d67d90f1ed87"
+  },
+  "protocol": "A: intact Spatial-Pro; B: raw 256px agent+wrist HPCM compress/decompress y+z bitstreams at each policy query, then native JPEG/Lanczos3 224px+crop Spatial-Pro processor; same 10 dummy steps and 8-action queue as Object control and historical C"
+}

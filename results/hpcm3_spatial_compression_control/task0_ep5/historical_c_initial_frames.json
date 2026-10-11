@@ -1,0 +1,37 @@
+[
+  {
+    "episode_index": 0,
+    "initial_state_sha256": "a6db032a71041791fbc1abf677d4c70813c24c8a608bd77e606c5a5516596950",
+    "main_rgb_sha256": "c25528fb78bd6bead0cc70f326e8f396cefa01137c1bacc1be72051296a1344b",
+    "wrist_rgb_sha256": "f58f1196dfd8a8c499ef97ba58ae56328478dcf65412fd1095f9e3cc651e0a5e",
+    "success": true
+  },
+  {
+    "episode_index": 1,
+    "initial_state_sha256": "278492f91da9db900616fd988bf35ccda53896ced8ca433dde3c9dca18d55de9",
+    "main_rgb_sha256": "6a528e835657f44f59b074e377c19869708fbd94907994c22e96a88274610d0f",
+    "wrist_rgb_sha256": "4030518bbcedc0c87feca645ff0d69942027738481775e0756995cfabac4edf0",
+    "success": true
+  },
+  {
+    "episode_index": 2,
+    "initial_state_sha256": "20f215103be3d40a8066c4fe6a5727b31615f0f5a55f47833491be03c044366f",
+    "main_rgb_sha256": "d1e69ee3febffa44de85f23a0626eb328c23b85a9e8a2e13904eb06cb3487f58",
+    "wrist_rgb_sha256": "4762a0fceda2283d5051cad23c82660c0469ecca014918d3a878c6407b695a73",
+    "success": true
+  },
+  {
+    "episode_index": 3,
+    "initial_state_sha256": "0176a3eb1aa0f7bb2c7001f24df4a9609a9add18cdab1ef13d1ce18c54beeb40",
+    "main_rgb_sha256": "6f8d45cc496ac282505250f5fe4eac27d8ea6f1309506ce23b995f123a6c2c68",
+    "wrist_rgb_sha256": "196fced2ef869608fa7d52ee55fdb11398cf38c2df7c1c5572c01d43605906c8",
+    "success": true
+  },
+  {
+    "episode_index": 4,
+    "initial_state_sha256": "e028ab4976791a4c402249a77b5b09b44549d6a65acd8f629d9a61c45f049c6b",
+    "main_rgb_sha256": "5acc0adcdbf0d711b4a70cdaf10361d40b6d5307da6be8f8e23f925ac541d27b",
+    "wrist_rgb_sha256": "ab75d38f45845c0371211fea78051381d879d36ac69cd700ac136f64fef1330e",
+    "success": true
+  }
+]
