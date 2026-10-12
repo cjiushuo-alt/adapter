@@ -85,6 +85,10 @@ def main() -> None:
             "adapter": {"path": str(adapter_path), "sha256": sha256(adapter_path)},
             "vla_model": {"path": str(Path(cfg.model.pretrained_checkpoint) / "model.safetensors"),
                           "sha256": sha256(Path(cfg.model.pretrained_checkpoint) / "model.safetensors")},
+            "action_head": {"path": str(Path(cfg.model.pretrained_checkpoint) / "action_head--checkpoint.pt"),
+                            "sha256": sha256(Path(cfg.model.pretrained_checkpoint) / "action_head--checkpoint.pt")},
+            "proprio_projector": {"path": str(Path(cfg.model.pretrained_checkpoint) / "proprio_projector--checkpoint.pt"),
+                                  "sha256": sha256(Path(cfg.model.pretrained_checkpoint) / "proprio_projector--checkpoint.pt")},
         },
         "train_hash_cache": {"path": str(train_hash_path), "sha256": sha256(train_hash_path),
                              "hash_count": len(train_hashes)},
@@ -157,6 +161,8 @@ def main() -> None:
         **provenance, "suite": "libero_object", "task_id": 0, "task_description": description,
         "episodes": 5, "successes": {arm: sum(row[f"{arm}_success"] for row in episodes)
                                       for arm in ("A", "B", "C")},
+        "success_rates": {arm: sum(row[f"{arm}_success"] for row in episodes) / 5
+                          for arm in ("A", "B", "C")},
         "exact_train_frame_matches": sum(row["exact_train_frame_matches"] for row in episodes),
         "mean_actual_bpp": {view: float(np.mean([r["bpp_actual"] for r in all_rates if r["view"] == view]))
                             for view in ("agent", "wrist")},
