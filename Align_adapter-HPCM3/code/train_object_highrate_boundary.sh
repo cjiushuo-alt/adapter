@@ -22,4 +22,4 @@ export LD_LIBRARY_PATH="${CONDA_PREFIX:-/home/cjs/anaconda3/envs/adapter}/lib${L
 cd "${code_root}"
 exec "${python_bin}" train_main.py \
   --config configs/train_object_highrate_boundary.yaml \
-  --wandb_mode online
+  --wandb_mode offline
