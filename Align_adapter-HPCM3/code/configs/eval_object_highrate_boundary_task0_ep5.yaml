@@ -1,0 +1,61 @@
+model:
+  model_family: openvla
+  pretrained_checkpoint: /home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro
+  use_hpcm_adapter: true
+  preserve_checkpoint_files: true
+  use_l1_regression: true
+  use_minivlm: true
+  num_diffusion_steps: 50
+  use_film: false
+  num_images_in_input: 2
+  use_proprio: true
+  center_crop: true
+  hpcm_raw_input_bypass: true
+  num_open_loop_steps: 8
+  unnorm_key: libero_object_no_noops
+  load_in_8bit: false
+  load_in_4bit: false
+  save_version: hpcm3-object-highrate-boundary-task0-ep5
+  use_pro_version: true
+  hpcm:
+    hpcm_root: /home/cjs/study/VLA/VLA-Adapter/HPCM
+    checkpoint: /home/cjs/study/VLA/VLA-Adapter/HPCM/ckpt/0.0483.pth.tar
+    model_name: HPCM_Base
+    scale_table_levels: 60
+  adapter:
+    checkpoint: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/adapter-best.pt
+    hpcm_input_dim: 320
+    pre_neck_output_dim: 320
+    pre_neck_spatial_size: 16
+    pre_neck_num_res_blocks: 2
+    pre_neck_dropout: 0.0
+    siglip_dim: 1152
+    dino_dim: 1024
+    neck_num_heads: 8
+    neck_ffn_hidden_dim: null
+    neck_dropout: 0.0
+    neck_activation: gelu
+  vision_backbone:
+    max_layer: 2
+  vla_path: /home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro
+  vla_id: prismatic
+  processor_name: null
+libero:
+  task_suite_name: libero_object
+  num_steps_wait: 10
+  num_trials_per_task: 5
+  initial_states_path: DEFAULT
+  env_img_res: 256
+logging:
+  local_log_dir: results/hpcm3_object_highrate_boundary/task0_ep5
+  use_wandb: false
+  save_rollout_videos: false
+audit:
+  enabled: true
+  compare_train_frames: true
+  train_hash_cache: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/train_rgb_sha256_selected.txt
+  split_manifest_path: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/data_split.json
+seed: 7
+experiment:
+  baseline_results: results/object_pro_intact_smoke/episode_results.jsonl
+  reconstructed_results: results/hpcm3_suite_highrate_screen/object_task0_ep20/episode_results.jsonl
