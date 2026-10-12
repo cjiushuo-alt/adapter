@@ -27,6 +27,7 @@ from pytorch_lightning.utilities import rank_zero_only
 
 from dataset.dataset import LightningDataModule
 from model.model import AlignModel
+from sim_validation import SimulatorBoundaryValidation
 
 
 class MetricsLogger(Callback):
@@ -158,6 +159,13 @@ def run_train(config):
         LearningRateMonitor(logging_interval="step"),
         MetricsLogger(),
     ]
+    sim_cfg = config.get("simulator_validation", {})
+    if sim_cfg.get("enabled", False):
+        callbacks.append(SimulatorBoundaryValidation(
+            manifest_path=sim_cfg.manifest_path,
+            checkpoint_dir=config.data.teacher_rollout_checkpoint,
+            output_jsonl=sim_cfg.output_jsonl,
+        ))
     early_cfg = training_cfg.get("early_stopping", {})
     if early_cfg.get("enabled", False):
         callbacks.append(

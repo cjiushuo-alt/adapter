@@ -12,11 +12,29 @@ import numpy as np
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 import random
+from functools import lru_cache
+from types import SimpleNamespace
 
 from PIL import Image
 import torch
 from torch.utils.data import Dataset, DataLoader
 import pytorch_lightning as pl
+
+
+@lru_cache(maxsize=2)
+def _object_pro_processor(checkpoint: str):
+    """Load the exact image processor used by the Object-Pro rollout, per worker."""
+    from prismatic.extern.hf.processing_prismatic import PrismaticImageProcessor
+
+    return PrismaticImageProcessor.from_pretrained(checkpoint, local_files_only=True)
+
+
+def object_pro_rollout_pixels(rgb: np.ndarray, checkpoint: str) -> torch.Tensor:
+    """Mirror the intact rollout's JPEG/Lanczos3/center-crop/processor path."""
+    from experiments.robot.openvla_utils import prepare_images_for_vla
+
+    pil = prepare_images_for_vla([rgb], SimpleNamespace(center_crop=True))[0]
+    return _object_pro_processor(checkpoint).apply_transform(pil).float()
 
 
 def center_crop(image: Image.Image) -> Image.Image:
@@ -48,6 +66,7 @@ class LiberoImageDataset(Dataset):
         split_unit: str = "trajectory",
         split_manifest_path: Optional[str] = None,
         max_samples: Optional[int] = None,
+        teacher_rollout_checkpoint: Optional[str] = None,
     ):
         """
         Args:
@@ -66,6 +85,7 @@ class LiberoImageDataset(Dataset):
         self.image_size = image_size
         self.image_keys = image_keys
         self.is_train = is_train
+        self.teacher_rollout_checkpoint = teacher_rollout_checkpoint
 
         if isinstance(image_dataset_dirs, str):
             image_dataset_dirs = [image_dataset_dirs]
@@ -209,7 +229,15 @@ class LiberoImageDataset(Dataset):
         image_tensor = image_tensor.permute(2, 0, 1)
         image_tensor = image_tensor / 127.5 - 1.0
 
-        return {"image": image_tensor}
+        result = {"image": image_tensor}
+        if self.teacher_rollout_checkpoint:
+            if self.image_size != 256:
+                raise ValueError("Object-Pro rollout-aligned HPCM input must be 256px")
+            result["teacher_pixels"] = object_pro_rollout_pixels(
+                np.ascontiguousarray(np.asarray(image, dtype=np.uint8)),
+                self.teacher_rollout_checkpoint,
+            )
+        return result
 
 
 def create_loader(
@@ -272,6 +300,7 @@ class LightningDataModule(pl.LightningDataModule):
         self.split_unit = config.get("split_unit", "trajectory")
         self.split_manifest_path = config.get("split_manifest_path")
         self.val_max_samples = config.get("val_max_samples")
+        self.teacher_rollout_checkpoint = config.get("teacher_rollout_checkpoint")
 
     def setup(self, stage: Optional[str] = None):
         pass
@@ -292,6 +321,7 @@ class LightningDataModule(pl.LightningDataModule):
             seed=self.seed,
             split_unit=self.split_unit,
             split_manifest_path=self.split_manifest_path,
+            teacher_rollout_checkpoint=self.teacher_rollout_checkpoint,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -310,6 +340,7 @@ class LightningDataModule(pl.LightningDataModule):
             seed=self.seed,
             split_unit=self.split_unit,
             split_manifest_path=self.split_manifest_path,
+            teacher_rollout_checkpoint=self.teacher_rollout_checkpoint,
             max_samples=self.val_max_samples,
         )
 

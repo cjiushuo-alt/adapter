@@ -276,6 +276,7 @@ class AlignModel(pl.LightningModule):
         images: torch.Tensor,
         extract_hpcm_features: bool = True,
         extract_vision_features: bool = True,
+        teacher_pixels: Optional[torch.Tensor] = None,
     ) -> Dict[str, torch.Tensor]:
         """Extract boundary or full-visual student/teacher feature pairs."""
         results: Dict[str, torch.Tensor] = {}
@@ -290,7 +291,15 @@ class AlignModel(pl.LightningModule):
         if extract_vision_features:
             if not self.vision_backbone_id.startswith("dinosiglip"):
                 raise ValueError("full/boundary distillation currently requires a DinoSigLIP backbone")
-            processed_images = self._prepare_vision_inputs(images)
+            if teacher_pixels is not None:
+                if teacher_pixels.ndim != 4 or teacher_pixels.shape[1:] != (6, 224, 224):
+                    raise ValueError(f"Expected rollout teacher pixels (B,6,224,224), got {tuple(teacher_pixels.shape)}")
+                processed_images = {
+                    "dino": teacher_pixels[:, :3].to(images.device),
+                    "siglip": teacher_pixels[:, 3:].to(images.device),
+                }
+            else:
+                processed_images = self._prepare_vision_inputs(images)
             # Teacher targets are constants.  The same frozen modules are then
             # reused below for the student posterior with autograd enabled.
             with torch.no_grad():
@@ -360,7 +369,11 @@ class AlignModel(pl.LightningModule):
         # teacher.  Applying two independent transforms would make the target
         # itself inconsistent and turn the objective into cross-view matching.
         images = self.image_augmentation(images)
-        results = self.forward(images, extract_hpcm_features=True, extract_vision_features=True)
+        teacher_pixels = batch.get("teacher_pixels") if isinstance(batch, dict) else None
+        if teacher_pixels is not None and self.image_augmentation.enabled:
+            raise ValueError("Rollout-exact teacher pixels cannot be combined with the old in-model augmentation")
+        results = self.forward(images, extract_hpcm_features=True, extract_vision_features=True,
+                               teacher_pixels=teacher_pixels)
         
         aligned_siglip = results["aligned_siglip_features"]
         aligned_dino = results["aligned_dino_features"]
@@ -399,7 +412,8 @@ class AlignModel(pl.LightningModule):
         if images is None:
             raise ValueError("batch 中未找到 image 或 images")
         
-        clean = self._distillation_loss(images)
+        teacher_pixels = batch.get("teacher_pixels") if isinstance(batch, dict) else None
+        clean = self._distillation_loss(images, teacher_pixels=teacher_pixels)
         self._log_validation_losses("clean", clean)
 
         selected = clean
@@ -407,6 +421,8 @@ class AlignModel(pl.LightningModule):
             augmented_images = self.image_augmentation(
                 images, seed=self.image_augmentation.validation_seed + batch_idx
             )
+            if teacher_pixels is not None:
+                raise ValueError("Rollout-exact teacher pixels cannot be combined with validation augmentation")
             augmented = self._distillation_loss(augmented_images)
             self._log_validation_losses("aug", augmented)
             selected = augmented
@@ -419,8 +435,9 @@ class AlignModel(pl.LightningModule):
         self.log("val_loss", selected["total_loss"], prog_bar=False, logger=True, on_step=False, on_epoch=True, sync_dist=True)
         return selected["total_loss"]
 
-    def _distillation_loss(self, images: torch.Tensor) -> Dict[str, torch.Tensor]:
-        results = self.forward(images, extract_hpcm_features=True, extract_vision_features=True)
+    def _distillation_loss(self, images: torch.Tensor, *, teacher_pixels: Optional[torch.Tensor] = None) -> Dict[str, torch.Tensor]:
+        results = self.forward(images, extract_hpcm_features=True, extract_vision_features=True,
+                               teacher_pixels=teacher_pixels)
         return self.loss_fn(
             aligned_siglip=results["aligned_siglip_features"],
             aligned_dino=results["aligned_dino_features"],
