@@ -16,6 +16,7 @@ test -f "${output_root}/sim_validation/manifest.json"
 mkdir -p "${output_root}/wandb" "${output_root}/logs"
 export WANDB_DIR="${output_root}/wandb"
 export PYTHONUNBUFFERED=1
+export HF_HUB_OFFLINE=1
 export LD_LIBRARY_PATH="${CONDA_PREFIX:-/home/cjs/anaconda3/envs/adapter}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
 cd "${code_root}"
