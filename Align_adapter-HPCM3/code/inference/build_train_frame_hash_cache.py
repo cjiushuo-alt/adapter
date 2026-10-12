@@ -23,6 +23,8 @@ def main() -> None:
     parser.add_argument("--train-ratio", type=float, default=0.9)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument("--max-samples", type=int, default=None,
+                        help="Match LiberoImageDataset's deterministic train_max_samples cap")
     parser.add_argument(
         "--split-manifest",
         type=Path,
@@ -47,6 +49,12 @@ def main() -> None:
         raise FileNotFoundError(f"No training frames found under {args.dataset_dir}")
     if args.split_manifest is not None:
         train_paths = [str(path) for path in paths]
+        if args.max_samples is not None and len(train_paths) > args.max_samples:
+            if args.max_samples <= 0:
+                raise ValueError("max-samples must be positive")
+            indices = list(range(len(train_paths)))
+            random.Random(args.seed).shuffle(indices)
+            train_paths = [train_paths[index] for index in sorted(indices[:args.max_samples])]
     else:
         indices = list(range(len(paths)))
         random.Random(args.seed).shuffle(indices)

@@ -300,6 +300,7 @@ class LightningDataModule(pl.LightningDataModule):
         self.split_unit = config.get("split_unit", "trajectory")
         self.split_manifest_path = config.get("split_manifest_path")
         self.val_max_samples = config.get("val_max_samples")
+        self.train_max_samples = config.get("train_max_samples")
         self.teacher_rollout_checkpoint = config.get("teacher_rollout_checkpoint")
 
     def setup(self, stage: Optional[str] = None):
@@ -322,6 +323,7 @@ class LightningDataModule(pl.LightningDataModule):
             split_unit=self.split_unit,
             split_manifest_path=self.split_manifest_path,
             teacher_rollout_checkpoint=self.teacher_rollout_checkpoint,
+            max_samples=self.train_max_samples,
         )
 
     def val_dataloader(self) -> DataLoader:

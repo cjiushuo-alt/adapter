@@ -44,6 +44,7 @@ data:
   train_ratio: 0.9
   split_unit: trajectory
   split_manifest_path: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/data_split.json
+  train_max_samples: 16384  # fixed before the first completed epoch; covers all 408 train trajectories
   val_max_samples: 512
   seed: 42
 
