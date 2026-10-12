@@ -15,9 +15,6 @@ import pytorch_lightning as pl
 import torch
 from PIL import Image
 
-from dataset.dataset import object_pro_rollout_pixels
-
-
 class SimulatorBoundaryValidation(pl.Callback):
     def __init__(self, manifest_path: str, checkpoint_dir: str, output_jsonl: str):
         self.manifest_path = Path(manifest_path)
@@ -34,7 +31,13 @@ class SimulatorBoundaryValidation(pl.Callback):
             if hashlib.sha256(rgb.tobytes()).hexdigest() != row["rgb_sha256"]:
                 raise ValueError(f"Simulator validation RGB changed: {row['path']}")
             raw = torch.from_numpy(rgb).permute(2, 0, 1).float().div_(127.5).sub_(1.0)
-            teacher = object_pro_rollout_pixels(rgb, self.checkpoint_dir)
+            teacher_path = self.manifest_path.parent / "teacher_pixels" / row["path"].replace(".png", ".npy")
+            if not teacher_path.is_file():
+                raise FileNotFoundError(f"Precompute simulator teacher pixels before training: {teacher_path}")
+            teacher_array = np.load(teacher_path, allow_pickle=False)
+            if teacher_array.shape != (6, 224, 224) or teacher_array.dtype != np.float32:
+                raise ValueError(f"Bad simulator teacher pixels: {teacher_path}")
+            teacher = torch.from_numpy(teacher_array)
             self.samples.append((row, raw, teacher))
         if not self.samples:
             raise ValueError("Simulator validation must not be empty")
