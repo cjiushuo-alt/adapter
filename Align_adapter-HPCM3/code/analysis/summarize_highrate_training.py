@@ -16,19 +16,29 @@ PATTERN = re.compile(
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--console-log", type=Path, required=True)
+    parser.add_argument("--resume-console-log", type=Path)
+    parser.add_argument("--resume-from-epoch", type=int)
     parser.add_argument("--sim-metrics", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     metrics = {}
-    for match in PATTERN.finditer(args.console_log.read_text(errors="replace")):
-        epoch = int(match["epoch"])
-        split = "train" if match["split"] == "训练" else "clean_val"
-        # Lightning's two-batch sanity validation also logs Epoch 000. The
-        # subsequent full validation for epoch zero overwrites it here.
-        metrics.setdefault(epoch, {})[split] = {
-            "total": float(match["total"]), "siglip_mse": float(match["siglip"]),
-            "dino_mse": float(match["dino"]),
-        }
+    if bool(args.resume_console_log) != (args.resume_from_epoch is not None):
+        raise ValueError("Provide both --resume-console-log and --resume-from-epoch")
+    sources = [(args.console_log, 0)]
+    if args.resume_console_log:
+        sources.append((args.resume_console_log, args.resume_from_epoch))
+    for source, first_epoch in sources:
+        for match in PATTERN.finditer(source.read_text(errors="replace")):
+            epoch = int(match["epoch"])
+            if epoch < first_epoch:
+                continue
+            split = "train" if match["split"] == "训练" else "clean_val"
+            # Lightning's short sanity validation logs the preceding epoch;
+            # exclude it from the resumed source via first_epoch.
+            metrics.setdefault(epoch, {})[split] = {
+                "total": float(match["total"]), "siglip_mse": float(match["siglip"]),
+                "dino_mse": float(match["dino"]),
+            }
     for line in args.sim_metrics.read_text().splitlines():
         row = json.loads(line)
         epoch = int(row["epoch"])
