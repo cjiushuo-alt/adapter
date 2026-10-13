@@ -44,7 +44,7 @@ def digest(path: Path) -> str:
 
 def rgb_from(path: Path) -> np.ndarray:
     with Image.open(path) as image:
-        rgb = np.ascontiguousarray(np.asarray(image.convert("RGB"), dtype=np.uint8))
+        rgb = np.array(image.convert("RGB"), dtype=np.uint8, copy=True)
     assert rgb.shape == (256, 256, 3), (path, rgb.shape)
     return rgb
 
@@ -145,7 +145,7 @@ def action(cfg, vla, processor, action_head, proprio_projector,
 
 
 def feature_row(reference: torch.Tensor, candidate: torch.Tensor) -> tuple[dict, np.ndarray, np.ndarray]:
-    ref = reference.float().reshape(256, -1)
+    ref = reference.to(candidate.device).float().reshape(256, -1)
     cand = candidate.float().reshape(256, -1)
     assert ref.shape == cand.shape
     token_mse = (cand - ref).square().mean(dim=-1)
