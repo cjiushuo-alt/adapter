@@ -49,7 +49,7 @@ data:
   seed: 42
 
 training:
-  max_epochs: 40  # safety ceiling; trajectory-held-out early stopping selects best
+  max_epochs: 50  # safety ceiling; trajectory-held-out early stopping selects best
   max_steps: -1
   gradient_clip_val: 1.0
   gradient_clip_algorithm: norm
@@ -83,8 +83,8 @@ training:
     every_n_steps: null
     every_n_epochs: 1
   resume:
-    enabled: false
-    state_ckpt_path: null
+    enabled: true
+    state_ckpt_path: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/checkpoints/last.ckpt
     adapter_only_path: null
     strict: true
   log_every_n_steps: 20
@@ -94,8 +94,8 @@ wandb:
   project: hpcm-suite-dist-adapter
   experiment_name: hpcm3-object-highrate-boundary-seed42
   resume:
-    enabled: false
-    run_id: null
+    enabled: true
+    run_id: 4pcqaalw
     resume_mode: allow
 
 simulator_validation:
