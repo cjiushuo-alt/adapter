@@ -1,0 +1,11 @@
+train_config: Align_adapter-HPCM3/code/configs/train_object_highrate_boundary.yaml
+eval_config: Align_adapter-HPCM3/code/configs/eval_object_highrate_boundary_task0_ep5.yaml
+split_manifest: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/data_split.json
+sim_manifest: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/sim_validation/manifest.json
+sim_image_root: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/sim_validation
+adapter_checkpoint: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/adapter-best.pt
+seed: 20261013
+rl_ds_trajectories_per_group: 16
+oracle_images_per_group: 2
+action_pairs: 3
+output_dir: results/hpcm3_object_highrate_offline/v4
