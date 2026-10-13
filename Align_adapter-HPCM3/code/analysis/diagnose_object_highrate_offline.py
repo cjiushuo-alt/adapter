@@ -223,6 +223,9 @@ def main() -> None:
     intact = get_vla(cfg)
     processor = get_processor(cfg)
     image_processor = processor.image_processor
+    # The teacher pass evaluates one view at a time; policy action checks
+    # below restore the checkpoint's two-view setting.
+    intact.vision_backbone.set_num_images_in_input(1)
     action_head = get_action_head(cfg, intact.llm_dim)
     proprio_projector = get_proprio_projector(cfg, intact.llm_dim, proprio_dim=8)
     teacher = {}
@@ -241,6 +244,7 @@ def main() -> None:
                               "final": final.cpu(), "projector": projected.cpu()}
             if (index + 1) % 24 == 0:
                 print(f"Teacher {index + 1}/{len(samples)}", flush=True)
+        intact.vision_backbone.set_num_images_in_input(2)
         for task, reset in action_pairs:
             agent = rgb_from(Path(sim_map[(task, reset, "agent")]["path"]))
             wrist = rgb_from(Path(sim_map[(task, reset, "wrist")]["path"]))
