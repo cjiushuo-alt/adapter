@@ -53,7 +53,7 @@ logging:
 audit:
   enabled: true
   compare_train_frames: true
-  train_hash_cache: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/train_rgb_sha256_selected.txt
+  train_hash_cache: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/train_rgb_sha256.txt
   split_manifest_path: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/data_split.json
 seed: 7
 experiment:

@@ -75,7 +75,9 @@ def main() -> None:
         assert reference["B"][1][i]["initial_state_sha256"] == state_hash
     train_hash_path = Path(cfg.audit.train_hash_cache)
     train_hashes = set(train_hash_path.read_text().splitlines())
-    assert len(train_hashes) == 16384
+    # Audit against every RGB frame in the training trajectories, not only
+    # the 16,384 frames selected for optimization.
+    assert len(train_hashes) == 120552
     args.output_dir.mkdir(parents=True)
     (args.output_dir / "config.yaml").write_text(args.config.read_text())
     provenance = {
