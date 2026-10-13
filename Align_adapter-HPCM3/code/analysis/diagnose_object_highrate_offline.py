@@ -158,6 +158,27 @@ def feature_row(reference: torch.Tensor, candidate: torch.Tensor) -> tuple[dict,
     return row, token_mse.cpu().numpy(), token_cosine.cpu().numpy()
 
 
+def posterior_with_prefix(reference: dict, combined) -> tuple[torch.Tensor, torch.Tensor]:
+    """Run the actual suffix blocks with teacher patch AND prefix tokens."""
+    restored = []
+    for prefix_key, patch_key, suffix in (
+        ("dino_prefix", "dino", combined.vision_backbone.featurizer),
+        ("siglip_prefix", "siglip", combined.vision_backbone.fused_featurizer),
+    ):
+        prefix = reference[prefix_key].to("cuda", dtype=torch.float32)
+        patch = reference[patch_key].to("cuda", dtype=torch.float32)
+        full_tokens = torch.cat([prefix, patch], dim=1)
+        original_dtype = next(suffix.parameters()).dtype
+        suffix.to(torch.float32)
+        try:
+            for block in list(suffix.blocks)[:-1]:
+                full_tokens = block(full_tokens)
+        finally:
+            suffix.to(original_dtype)
+        restored.append(full_tokens[:, prefix.shape[1]:].to(torch.bfloat16))
+    return restored[0], restored[1]
+
+
 def emit_metrics(rows: list[dict], tokens: dict, sample: dict, stage: str, branch: str,
                  reference: torch.Tensor, candidate: torch.Tensor, kind: str = "student") -> None:
     row, mse, cosine = feature_row(reference, candidate)
@@ -236,11 +257,14 @@ def main() -> None:
             rgb = rgb_from(Path(sample["path"]))
             pix = pixels(rgb, image_processor, cfg)
             backbone = intact.vision_backbone
-            dino = backbone.featurizer.get_intermediate_layers(pix[:, :3], n={2})[0]
-            siglip = backbone.fused_featurizer.get_intermediate_layers(pix[:, 3:], n={2})[0]
+            dino, dino_prefix = backbone.featurizer.get_intermediate_layers(
+                pix[:, :3], n={2}, return_prefix_tokens=True)[0]
+            siglip, siglip_prefix = backbone.fused_featurizer.get_intermediate_layers(
+                pix[:, 3:], n={2}, return_prefix_tokens=True)[0]
             final = backbone(pix)
             projected = intact.projector(final)
             teacher[index] = {"dino": dino.cpu(), "siglip": siglip.cpu(),
+                              "dino_prefix": dino_prefix.cpu(), "siglip_prefix": siglip_prefix.cpu(),
                               "final": final.cpu(), "projector": projected.cpu()}
             if (index + 1) % 24 == 0:
                 print(f"Teacher {index + 1}/{len(samples)}", flush=True)
@@ -294,8 +318,12 @@ def main() -> None:
             if index == 0:
                 pix = pixels(rgb, image_processor, cfg)
                 spliced.vision_backbone.set_raw_images([rgb])
+                staged = spliced.vision_backbone._pending_raw_images.to("cuda")
+                parity.append({"test": "staged_raw_vs_direct_raw", "max_abs": float((staged - raw).abs().max())})
                 wrapped = spliced.vision_backbone(pix)
                 parity.append({"test": "wrapper_vs_combined_same_rgb", "max_abs": float((wrapped.float() - final.unsqueeze(0).float()).abs().max())})
+                repeat = combined(image=raw)["fused_features"][0, 0]
+                parity.append({"test": "combined_repeat_same_rgb", "max_abs": float((repeat.float() - final.float()).abs().max())})
                 parity.append({"test": "fused_dino_first", "equal": bool(torch.equal(final[:, :1024], result["vision_dino_features"][0, 0]))})
                 parity.append({"test": "fused_siglip_second", "equal": bool(torch.equal(final[:, 1024:], result["vision_siglip_features"][0, 0]))})
             group_view = (sample["group"], sample["view"])
@@ -312,8 +340,24 @@ def main() -> None:
                     combined.adapter.forward = original_adapter_forward
                 oracle_final = injected["fused_features"][0, 0]
                 oracle_projected = spliced.projector(oracle_final.unsqueeze(0))[0]
+                emit_metrics(rows, tokens, sample, "final", "dino", ref["final"][0, :, :1024],
+                             oracle_final[:, :1024], "oracle")
+                emit_metrics(rows, tokens, sample, "final", "siglip", ref["final"][0, :, 1024:],
+                             oracle_final[:, 1024:], "oracle")
                 emit_metrics(rows, tokens, sample, "final", "fused", ref["final"][0], oracle_final, "oracle")
                 emit_metrics(rows, tokens, sample, "projector", "fused", ref["projector"][0], oracle_projected, "oracle")
+                # A diagnostic upper bound: restore the intact tower's hidden
+                # prefix/register tokens, which the 256-token Adapter omits.
+                restored = posterior_with_prefix(ref, combined)
+                for branch, patches in zip(("dino", "siglip"), restored):
+                    emit_metrics(rows, tokens, sample, "final", branch,
+                                 ref["final"][0, :, :1024] if branch == "dino" else ref["final"][0, :, 1024:],
+                                 patches[0], "oracle_with_prefix")
+                restored_final = torch.cat(restored, dim=-1)[0]
+                emit_metrics(rows, tokens, sample, "final", "fused", ref["final"][0],
+                             restored_final, "oracle_with_prefix")
+                emit_metrics(rows, tokens, sample, "projector", "fused", ref["projector"][0],
+                             spliced.projector(restored_final.unsqueeze(0))[0], "oracle_with_prefix")
             if (index + 1) % 24 == 0:
                 print(f"Student {index + 1}/{len(samples)}", flush=True)
 
@@ -340,12 +384,29 @@ def main() -> None:
                                        agent, wrist, description, True)
             finally:
                 combined.adapter.forward = original_adapter_forward
+            restored_views = []
+            for sample in (agent_sample, wrist_sample):
+                restored_dino, restored_siglip = posterior_with_prefix(teacher[samples.index(sample)], combined)
+                restored_views.append(torch.cat([restored_dino, restored_siglip], dim=-1))
+            restored_features = torch.cat(restored_views, dim=1)
+            wrapper = spliced.vision_backbone
+            original_wrapper_forward = wrapper.forward
+            def fixed_feature_forward(_self, _pixel_values, **_kwargs):
+                return restored_features
+            wrapper.forward = MethodType(fixed_feature_forward, wrapper)
+            try:
+                corrected_action = action(cfg, spliced, processor, action_head, proprio_projector,
+                                          agent, wrist, description, False)
+            finally:
+                wrapper.forward = original_wrapper_forward
             baseline = baseline_actions[(task, reset)]
-            assert baseline.shape == oracle_action.shape == student_action.shape
+            assert baseline.shape == oracle_action.shape == student_action.shape == corrected_action.shape
             action_rows.append({"task_id": task, "reset_index": reset,
                                 "state_sha256": agent_sample["state_sha256"],
                                 "baseline_vs_oracle_mae": float(np.abs(baseline - oracle_action).mean()),
                                 "baseline_vs_oracle_max_abs": float(np.abs(baseline - oracle_action).max()),
+                                "baseline_vs_oracle_with_prefix_mae": float(np.abs(baseline - corrected_action).mean()),
+                                "baseline_vs_oracle_with_prefix_max_abs": float(np.abs(baseline - corrected_action).max()),
                                 "baseline_vs_student_mae": float(np.abs(baseline - student_action).mean()),
                                 "baseline_vs_student_max_abs": float(np.abs(baseline - student_action).max()),
                                 "action_shape": list(baseline.shape)})
@@ -356,7 +417,8 @@ def main() -> None:
               "protocol": {"training_cap_reconstruction": "sorted training paths, random.Random(42).shuffle, first 16384 indices",
                            "teacher": "Object-Pro native JPEG/Lanczos3/crop/processor pixels; BF16 intact tower",
                            "student": "raw decoded 256 RGB to frozen HPCM and FP16 Adapter; actual spliced FP32 posterior and BF16 output",
-                           "oracle": "replace Adapter block-2 output in memory with intact teacher block-2 tokens; actual spliced posterior/wrapper",
+                           "oracle": "replace Adapter block-2 output in memory with intact teacher block-2 patch tokens; actual spliced posterior/wrapper",
+                           "oracle_with_prefix": "offline-only restoration of intact block-2 prefix/register tokens before the same posterior; not a deployable Adapter path",
                            "action": "three independent simulator fresh-reset pairs, fixed zero proprio; no environment step or formal state"},
               "checkpoints": {"hpcm": {"path": model["hpcm"]["checkpoint"], "sha256": digest(Path(model["hpcm"]["checkpoint"]))},
                               "adapter": {"path": config["adapter_checkpoint"], "sha256": digest(Path(config["adapter_checkpoint"]))},
