@@ -120,7 +120,9 @@ def pixels(rgb: np.ndarray, image_processor, cfg) -> torch.Tensor:
 
 
 def raw_tensor(rgb: np.ndarray) -> torch.Tensor:
-    return torch.from_numpy(rgb).permute(2, 0, 1).unsqueeze(0).to("cuda").float().div_(127.5).sub_(1.0)
+    # Match both LiberoImageDataset and VisionBackboneWrapper exactly: uint8
+    # to float32 and [-1, 1] normalization happen on CPU before the copy.
+    return torch.from_numpy(rgb).permute(2, 0, 1).unsqueeze(0).float().div_(127.5).sub_(1.0).to("cuda")
 
 
 def action_observation(agent: np.ndarray, wrist: np.ndarray, raw: bool) -> dict:
