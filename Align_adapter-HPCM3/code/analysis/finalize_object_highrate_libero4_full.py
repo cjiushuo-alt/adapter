@@ -46,8 +46,8 @@ def main() -> None:
     eval_summary = json.loads((args.eval_dir / "summary.json").read_text())
     curve = rows(root / "validation_curve.jsonl")
     sim = rows(root / "sim_validation_metrics.jsonl")
-    if not curve or not sim or len(curve) != len(sim):
-        raise ValueError("Missing or misaligned clean/simulator validation records")
+    if not curve or not sim:
+        raise ValueError("Missing clean/simulator validation records")
     if audit["train_protected_exact_rgb_hash_overlap"] or audit["train_val_exact_rgb_hash_overlap"]:
         raise ValueError("Leakage audit failed")
     if eval_summary["exact_train_frame_matches"]:
@@ -80,10 +80,16 @@ def main() -> None:
                        "best_full_state": sha256(best), "object_pro": sha256(object_pro)}
     (DEST / "checkpoint_sha256.json").write_text(json.dumps(checkpoint_shas, indent=2) + "\n")
 
+    # A resumed run may repeat its last validation step or be interrupted
+    # between the two callbacks. Keep the latest complete pair at each step.
+    clean_by_step = {row["global_step"]: row for row in curve}
+    sim_by_step = {row["global_step"]: row for row in sim}
+    paired_steps = sorted(clean_by_step.keys() & sim_by_step.keys())
+    if not paired_steps:
+        raise ValueError("No paired clean/simulator validation steps")
     curve_lines = []
-    for clean, simulator in zip(curve, sim):
-        if clean["global_step"] != simulator["global_step"]:
-            raise ValueError("Clean and simulator validation steps differ")
+    for step in paired_steps:
+        clean, simulator = clean_by_step[step], sim_by_step[step]
         curve_lines.append(
             f"| {clean['global_step']} | {value(clean, 'train/total_loss')} | "
             f"{value(clean, 'val_loss')} | "
