@@ -1,0 +1,60 @@
+{
+  "config_sha256": "1c91dccaff99355ed5f3dc67145e1bc7f15dbc8750f18ae14e94d8797a9fe2e2",
+  "split_manifest": {
+    "path": "/media/cjs/shared/linux/Align_adapter/hpcm3_object_dist_libero4/data_split.json",
+    "sha256": "3e1c1fa86d5cd73a7aff6979f08d47017e1cd1f8ba6f839e88ae391b9aa8fd15",
+    "unit": "trajectory",
+    "train": 1523,
+    "val": 170,
+    "overlap": 0
+  },
+  "sim_manifest": {
+    "path": "/media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/sim_validation/manifest.json",
+    "sha256": "8784c72a8337878ab582e26b95e5fa4dfa098cd3c6d58409976e60c3af2b99c7",
+    "images": 40,
+    "protected_state_collisions": 0
+  },
+  "suite_counts": {
+    "libero_10_no_noops": {
+      "train_trajectories": 342,
+      "train_images": 182890,
+      "val_trajectories": 37,
+      "val_images": 20048
+    },
+    "libero_goal_no_noops": {
+      "train_trajectories": 385,
+      "train_images": 94748,
+      "val_trajectories": 43,
+      "val_images": 9336
+    },
+    "libero_object_no_noops": {
+      "train_trajectories": 416,
+      "train_images": 123150,
+      "val_trajectories": 38,
+      "val_images": 10818
+    },
+    "libero_spatial_no_noops": {
+      "train_trajectories": 380,
+      "train_images": 93052,
+      "val_trajectories": 52,
+      "val_images": 12888
+    }
+  },
+  "train_images": 493840,
+  "val_images": 53090,
+  "train_unique_rgb_hashes": 493840,
+  "val_unique_rgb_hashes": 53090,
+  "train_val_exact_rgb_hash_overlap": 0,
+  "protected_rollout_audit_files": [
+    {
+      "path": "results/hpcm3_object_highrate_boundary/task0_ep5/audit.jsonl",
+      "sha256": "82453873deeb7bd4245adefdc422ea8725d1937aed49be8037114d6324c4ab51"
+    }
+  ],
+  "protected_rollout_state_hashes": 5,
+  "protected_rollout_rgb_hashes": 2480,
+  "train_protected_exact_rgb_hash_overlap": 0,
+  "initial_state_overlap": "unknown: RLDS PNG export lacks complete simulator initial states",
+  "train_hash_cache_sha256": "f906f72464f8fd8388909ce63e6ff8d1238bbdf11b24c8fbc2d877f0d64447c4",
+  "val_hash_cache_sha256": "21d18e44498b3e203581b688502fa6dfcb69ca2a1cd621bbdeb1ebfa1bdeb52a"
+}
