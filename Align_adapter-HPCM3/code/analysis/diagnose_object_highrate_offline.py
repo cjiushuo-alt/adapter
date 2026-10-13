@@ -112,6 +112,20 @@ def select_samples(config: dict, training: dict) -> tuple[list[dict], dict]:
     return samples, counts
 
 
+def select_simulator_only(config: dict) -> tuple[list[dict], dict]:
+    manifest = json.loads(Path(config["sim_manifest"]).read_text())
+    assert manifest["protected_state_collisions"] == 0 and len(manifest["samples"]) == 40
+    samples = [{"group": "simulator_fresh_reset", "view": item["view"],
+                "task_id": item["task_id"], "reset_index": item["reset_index"],
+                "state_sha256": item["state_sha256"],
+                "path": str(Path(config["sim_image_root"]) / item["path"]),
+                "expected_rgb_sha256": item["rgb_sha256"]}
+               for item in manifest["samples"]]
+    assert sum(sample["view"] == "agent" for sample in samples) == 20
+    assert sum(sample["view"] == "wrist" for sample in samples) == 20
+    return samples, {"simulator_images": 40, "agent": 20, "wrist": 20}
+
+
 def policy_cfg(eval_config: dict) -> SimpleNamespace:
     raw = dict(eval_config["model"])
     raw["preserve_checkpoint_files"] = True
@@ -185,6 +199,30 @@ def posterior_with_prefix(reference: dict, combined) -> tuple[torch.Tensor, torc
     return restored[0], restored[1]
 
 
+def run_with_teacher_dino_prefix(combined, raw: torch.Tensor, prefix: torch.Tensor) -> dict:
+    """Keep Adapter patch predictions, add only teacher CLS/register tokens."""
+    featurizer = combined.vision_backbone.featurizer
+    original_forward = featurizer.forward
+    prefix = prefix.to(device=raw.device, dtype=torch.float32)
+    assert prefix.ndim == 3 and prefix.shape[0] == raw.shape[0] and prefix.shape[1] == 5
+
+    def prefixed_forward(self, predicted_patches):
+        assert predicted_patches.shape[1] == 256
+        tokens = torch.cat([prefix, predicted_patches.float()], dim=1)
+        assert tokens.shape[1] == 261  # CLS, four registers, then raster-order patches
+        # skip_vision_backbone_layers retains block 3 onward and intentionally
+        # omits the final block, matching Prismatic's second-to-last output.
+        for block in list(self.blocks)[:-1]:
+            tokens = block(tokens)
+        return tokens[:, 5:]
+
+    featurizer.forward = MethodType(prefixed_forward, featurizer)
+    try:
+        return combined(image=raw)
+    finally:
+        featurizer.forward = original_forward
+
+
 def emit_metrics(rows: list[dict], tokens: dict, sample: dict, stage: str, branch: str,
                  reference: torch.Tensor, candidate: torch.Tensor, kind: str = "student") -> None:
     row, mse, cosine = feature_row(reference, candidate)
@@ -236,7 +274,8 @@ def main() -> None:
     assert Path(config["adapter_checkpoint"]).resolve() == Path(evaluation["model"]["adapter"]["checkpoint"]).resolve()
     torch.manual_seed(int(config["seed"]))
     np.random.seed(int(config["seed"]))
-    samples, coverage = select_samples(config, training)
+    samples, coverage = (select_simulator_only(config) if config.get("sim_only", False)
+                         else select_samples(config, training))
     for sample in samples:
         rgb = rgb_from(Path(sample["path"]))
         sample["rgb_sha256"] = hashlib.sha256(rgb.tobytes()).hexdigest()
@@ -302,6 +341,7 @@ def main() -> None:
     parity = []
     action_rows = []
     original_adapter_forward = combined.adapter.forward
+    prefix_ablation = bool(config.get("student_prefix_ablation", False))
     with torch.inference_mode():
         for index, sample in enumerate(samples):
             rgb = rgb_from(Path(sample["path"]))
@@ -321,6 +361,22 @@ def main() -> None:
                 ("projector", "fused", ref["projector"][0], projected),
             ):
                 emit_metrics(rows, tokens, sample, stage, branch, reference, candidate)
+            if prefix_ablation:
+                corrected = run_with_teacher_dino_prefix(combined, raw, ref["dino_prefix"])
+                assert torch.equal(result["aligned_dino_features"], corrected["aligned_dino_features"])
+                assert torch.equal(result["aligned_siglip_features"], corrected["aligned_siglip_features"])
+                assert torch.equal(result["vision_siglip_features"], corrected["vision_siglip_features"])
+                corrected_final = corrected["fused_features"][0, 0]
+                corrected_projected = spliced.projector(corrected_final.unsqueeze(0))[0]
+                for stage, branch, reference, candidate in (
+                    ("block2", "dino", ref["dino"][0], corrected["aligned_dino_features"][0, 0]),
+                    ("final", "dino", ref["final"][0, :, :1024], corrected_final[:, :1024]),
+                    ("final", "siglip", ref["final"][0, :, 1024:], corrected_final[:, 1024:]),
+                    ("final", "fused", ref["final"][0], corrected_final),
+                    ("projector", "fused", ref["projector"][0], corrected_projected),
+                ):
+                    emit_metrics(rows, tokens, sample, stage, branch, reference, candidate,
+                                 "student_with_teacher_dino_prefix")
             if index == 0:
                 pix = pixels(rgb, image_processor, cfg)
                 spliced.vision_backbone.set_raw_images([rgb])
@@ -378,6 +434,24 @@ def main() -> None:
                                if item["task_id"] == task and item["reset_index"] == reset)
             student_action = action(cfg, spliced, processor, action_head, proprio_projector,
                                     agent, wrist, description, True)
+            student_prefixed_action = None
+            if prefix_ablation:
+                prefix = torch.cat([teacher[samples.index(agent_sample)]["dino_prefix"],
+                                    teacher[samples.index(wrist_sample)]["dino_prefix"]]).to("cuda")
+                featurizer = combined.vision_backbone.featurizer
+                original_dino_forward = featurizer.forward
+                def prefixed_forward(self, predicted_patches):
+                    assert predicted_patches.shape == (2, 256, 1024)
+                    tokens = torch.cat([prefix.float(), predicted_patches.float()], dim=1)
+                    for block in list(self.blocks)[:-1]:
+                        tokens = block(tokens)
+                    return tokens[:, 5:]
+                featurizer.forward = MethodType(prefixed_forward, featurizer)
+                try:
+                    student_prefixed_action = action(cfg, spliced, processor, action_head, proprio_projector,
+                                                     agent, wrist, description, True)
+                finally:
+                    featurizer.forward = original_dino_forward
             teacher_dino = torch.cat([teacher[samples.index(agent_sample)]["dino"],
                                       teacher[samples.index(wrist_sample)]["dino"]]).to("cuda", dtype=torch.float16)
             teacher_siglip = torch.cat([teacher[samples.index(agent_sample)]["siglip"],
@@ -401,22 +475,46 @@ def main() -> None:
                 return restored_features
             wrapper.forward = MethodType(fixed_feature_forward, wrapper)
             try:
-                corrected_action = action(cfg, spliced, processor, action_head, proprio_projector,
-                                          agent, wrist, description, False)
+                oracle_corrected_action = action(cfg, spliced, processor, action_head, proprio_projector,
+                                                 agent, wrist, description, False)
             finally:
                 wrapper.forward = original_wrapper_forward
             baseline = baseline_actions[(task, reset)]
-            assert baseline.shape == oracle_action.shape == student_action.shape == corrected_action.shape
+            assert baseline.shape == oracle_action.shape == student_action.shape == oracle_corrected_action.shape
+            if student_prefixed_action is not None:
+                assert baseline.shape == student_prefixed_action.shape
             action_rows.append({"task_id": task, "reset_index": reset,
                                 "state_sha256": agent_sample["state_sha256"],
                                 "baseline_vs_oracle_mae": float(np.abs(baseline - oracle_action).mean()),
                                 "baseline_vs_oracle_max_abs": float(np.abs(baseline - oracle_action).max()),
-                                "baseline_vs_oracle_with_prefix_mae": float(np.abs(baseline - corrected_action).mean()),
-                                "baseline_vs_oracle_with_prefix_max_abs": float(np.abs(baseline - corrected_action).max()),
+                                "baseline_vs_oracle_with_prefix_mae": float(np.abs(baseline - oracle_corrected_action).mean()),
+                                "baseline_vs_oracle_with_prefix_max_abs": float(np.abs(baseline - oracle_corrected_action).max()),
                                 "baseline_vs_student_mae": float(np.abs(baseline - student_action).mean()),
                                 "baseline_vs_student_max_abs": float(np.abs(baseline - student_action).max()),
+                                **({"baseline_vs_student_with_prefix_mae": float(np.abs(baseline - student_prefixed_action).mean()),
+                                    "baseline_vs_student_with_prefix_max_abs": float(np.abs(baseline - student_prefixed_action).max()),
+                                    "student_vs_student_with_prefix_mae": float(np.abs(student_action - student_prefixed_action).mean())}
+                                   if student_prefixed_action is not None else {}),
                                 "action_shape": list(baseline.shape)})
             print(f"Action parity task {task} reset {reset}: {action_rows[-1]}", flush=True)
+
+    reference_parity = None
+    if config.get("reference_diagnostic"):
+        prior = json.loads(Path(config["reference_diagnostic"]).read_text())
+        old_hashes = sorted(sample["rgb_sha256"] for sample in prior["samples"]
+                            if sample["group"] == "simulator_fresh_reset")
+        new_hashes = sorted(sample["rgb_sha256"] for sample in samples)
+        assert old_hashes == new_hashes and len(new_hashes) == 40
+        prior_rows = {(row["rgb_sha256"], row["stage"], row["branch"]): row["mse"]
+                      for row in prior["sample_metrics"]
+                      if row["kind"] == "student" and row["group"] == "simulator_fresh_reset"}
+        differences = [abs(row["mse"] - prior_rows[(row["rgb_sha256"], row["stage"], row["branch"])])
+                       for row in rows if row["kind"] == "student"]
+        assert len(differences) == 40 * 6 and max(differences) < 1e-5
+        reference_parity = {"path": config["reference_diagnostic"],
+                            "sha256": digest(Path(config["reference_diagnostic"])),
+                            "sample_rgb_hashes_equal": True,
+                            "baseline_student_mse_max_abs_diff": max(differences)}
 
     output = {"schema_version": 1, "seed": int(config["seed"]),
               "git_commit": __import__("subprocess").check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True).strip(),
@@ -425,6 +523,7 @@ def main() -> None:
                            "student": "raw decoded 256 RGB to frozen HPCM and FP16 Adapter; actual spliced FP32 posterior and BF16 output",
                            "oracle": "replace Adapter block-2 output in memory with intact teacher block-2 patch tokens; actual spliced posterior/wrapper",
                            "oracle_with_prefix": "offline-only restoration of intact block-2 prefix/register tokens before the same posterior; not a deployable Adapter path",
+                           "student_with_teacher_dino_prefix": "same HPCM/Adapter 256 DINO patch predictions; only the intact DINO CLS+4 registers inserted before posterior block 3 in memory",
                            "action": "three independent simulator fresh-reset pairs, fixed zero proprio; no environment step or formal state"},
               "checkpoints": {"hpcm": {"path": model["hpcm"]["checkpoint"], "sha256": digest(Path(model["hpcm"]["checkpoint"]))},
                               "adapter": {"path": config["adapter_checkpoint"], "sha256": digest(Path(config["adapter_checkpoint"]))},
@@ -434,6 +533,15 @@ def main() -> None:
               "manifests": {"split_sha256": digest(Path(config["split_manifest"])),
                             "sim_sha256": digest(Path(config["sim_manifest"]))},
               "coverage": coverage, "samples": samples, "parity": parity,
+              "reference_parity": reference_parity,
+              "precision": {"teacher_boundary": str(teacher[0]["dino"].dtype),
+                            "adapter_parameters": str(next(combined.adapter.parameters()).dtype),
+                            "posterior_parameters": str(next(combined.vision_backbone.featurizer.parameters()).dtype),
+                            "student_boundary": str(result["aligned_dino_features"].dtype),
+                            "student_final": str(result["vision_dino_features"].dtype),
+                            "prefix_injection": "teacher BF16 CLS+registers cast to FP32 together with FP16 Adapter patches; suffix executes FP32; final cast BF16"},
+              "prefix_token_counts": {"dino": int(teacher[0]["dino_prefix"].shape[1]),
+                                      "siglip": int(teacher[0]["siglip_prefix"].shape[1])},
               "action_parity": action_rows, "metrics": summarize(rows, tokens), "sample_metrics": rows}
     output_dir.mkdir(parents=True)
     (output_dir / "config.yaml").write_text(args.config.read_text())
