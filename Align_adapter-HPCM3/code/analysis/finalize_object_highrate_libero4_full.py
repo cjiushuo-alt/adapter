@@ -58,6 +58,7 @@ def main() -> None:
 
     DEST.mkdir(parents=True, exist_ok=True)
     sources = {
+        "source_commit.txt": root / "source_commit.txt",
         "train_config.yaml": args.config,
         "eval_config.yaml": args.eval_dir / "config.yaml",
         "data_audit.json": root / "data_audit/summary.json",
@@ -111,6 +112,7 @@ def main() -> None:
     new_c = eval_summary["successes"]["C"]
     outcome = ("高于旧高码率 Object Adapter 的 1/5，但五个状态样本不足以证明 suite 级改善。"
                if new_c > old_c else "未超过旧高码率 Object Adapter 的 1/5；本组全量训练未显示五状态闭环改善。")
+    source_commit = (root / "source_commit.txt").read_text().strip()
     text = f"""# Object 高码率 HPCM3：四套 LIBERO 全量轨迹图像联合训练
 
 本实验只改变高码率 Object HPCM3 的训练语料规模：固定 λ=0.0483 HPCM、Object-Pro teacher、2 ResBlocks、block-2 边界蒸馏及 `SigLIP_MSE + 5×DINO_MSE`；没有 Prefix Head、full-visual loss 或旧 Adapter 初始化。Object task 0 五个配对状态的结果为原始 Object-Pro **{eval_summary['successes']['A']}/5**、高码率重建 RGB→Object-Pro **{eval_summary['successes']['B']}/5**、本次 Adapter **{new_c}/5**（旧高码率 Object Adapter 为 1/5）。{outcome}不把这五个曾用于历史实验的状态视为全新、无偏的论文正式测试集。
@@ -156,7 +158,7 @@ split manifest SHA256 `{audit['split_manifest']['sha256']}`；train/val trajecto
 | 本轮最佳 Adapter | `{checkpoint_shas['adapter_best']}` |
 | 本轮最佳完整训练状态 | `{checkpoint_shas['best_full_state']}` |
 
-[训练配置](../results/hpcm3_object_highrate_libero4_full/train_config.yaml)、[评测配置](../results/hpcm3_object_highrate_libero4_full/eval_config.yaml)、[数据审计](../results/hpcm3_object_highrate_libero4_full/data_audit.json)和上述结果随报告提交；大型权重、原图、W&B 离线二进制与训练日志不上传。
+训练启动时 Git commit `{source_commit}`。[训练配置](../results/hpcm3_object_highrate_libero4_full/train_config.yaml)、[评测配置](../results/hpcm3_object_highrate_libero4_full/eval_config.yaml)、[数据审计](../results/hpcm3_object_highrate_libero4_full/data_audit.json)和上述结果随报告提交；大型权重、原图、W&B 离线二进制与训练日志不上传。
 """
     REPORT.parent.mkdir(parents=True, exist_ok=True)
     REPORT.write_text(text)
