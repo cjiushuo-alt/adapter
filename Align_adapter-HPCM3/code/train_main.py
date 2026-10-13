@@ -67,6 +67,28 @@ class MetricsLogger(Callback):
             print(f"\nEpoch {trainer.current_epoch:03d} 验证: Total={t:.4f}, SigLIP={s:.4f}, DINO={d:.4f}")
 
 
+class ValidationJSONL(Callback):
+    """Durable validation curve for unattended experiments, independent of W&B."""
+
+    def __init__(self, output_path: str):
+        self.output_path = Path(output_path)
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    @rank_zero_only
+    def on_validation_epoch_end(self, trainer, pl_module):
+        if trainer.sanity_checking:
+            return
+        metrics = trainer.callback_metrics
+        row = {"epoch": trainer.current_epoch, "global_step": trainer.global_step}
+        for key in ("val_loss", "val/total_loss", "val/siglip_loss", "val/dino_loss",
+                    "train/total_loss", "train/siglip_loss", "train/dino_loss"):
+            value = metrics.get(key)
+            if value is not None:
+                row[key] = float(value)
+        with self.output_path.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(row) + "\n")
+
+
 def resolve_ckpt_path(path_str: str, project_root: Path) -> Path:
     p = Path(path_str)
     return p if p.is_absolute() else project_root / p
@@ -166,6 +188,8 @@ def run_train(config):
             checkpoint_dir=config.data.teacher_rollout_checkpoint,
             output_jsonl=sim_cfg.output_jsonl,
         ))
+    if training_cfg.get("metrics_jsonl"):
+        callbacks.append(ValidationJSONL(training_cfg.metrics_jsonl))
     early_cfg = training_cfg.get("early_stopping", {})
     if early_cfg.get("enabled", False):
         callbacks.append(

@@ -45,7 +45,14 @@ def main() -> None:
     manifest = json.loads(Path(cfg["data"]["split_manifest_path"]).read_text())
     assert not (set(manifest["train_episodes"]) & set(manifest["val_episodes"]))
     paths = []
-    for episode in manifest["val_episodes"][:2]:
+    validation_episodes = manifest["val_episodes"]
+    if len(cfg["data"]["dataset_names"]) > 1:
+        validation_episodes = [next(episode for episode in validation_episodes
+                                    if Path(episode).parent.name == suite)
+                               for suite in cfg["data"]["dataset_names"]]
+    else:
+        validation_episodes = validation_episodes[:2]
+    for episode in validation_episodes:
         selected = sorted(Path(episode).glob("step_*_image.png"))
         assert selected
         paths.append(selected[0])

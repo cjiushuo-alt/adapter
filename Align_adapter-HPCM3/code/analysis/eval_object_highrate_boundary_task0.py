@@ -55,7 +55,11 @@ def main() -> None:
     assert cfg.libero.task_suite_name == "libero_object" and cfg.libero.num_trials_per_task == 5
     assert cfg.seed == 7 and cfg.model.num_open_loop_steps == 8 and cfg.libero.num_steps_wait == 10
     assert cfg.model.hpcm.checkpoint.endswith("0.0483.pth.tar")
-    assert cfg.model.adapter.checkpoint.endswith("hpcm3_object_highrate_boundary/adapter-best.pt")
+    expected_adapter = raw["experiment"].get(
+        "expected_adapter_checkpoint",
+        "/media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_boundary/adapter-best.pt",
+    )
+    assert cfg.model.adapter.checkpoint == expected_adapter
     if args.output_dir.exists():
         raise FileExistsError(f"Refusing to overwrite {args.output_dir}")
     adapter_path = Path(cfg.model.adapter.checkpoint)
@@ -77,7 +81,16 @@ def main() -> None:
     train_hashes = set(train_hash_path.read_text().splitlines())
     # Audit against every RGB frame in the training trajectories, not only
     # the 16,384 frames selected for optimization.
-    assert len(train_hashes) == 120552
+    audit_summary_path = raw["experiment"].get("data_audit_summary")
+    if audit_summary_path:
+        data_audit = json.loads(Path(audit_summary_path).read_text())
+        expected_hashes = data_audit["train_unique_rgb_hashes"]
+        assert sha256(train_hash_path) == data_audit["train_hash_cache_sha256"]
+        assert data_audit["train_protected_exact_rgb_hash_overlap"] == 0
+        assert data_audit["train_val_exact_rgb_hash_overlap"] == 0
+    else:
+        expected_hashes = 120552
+    assert len(train_hashes) == expected_hashes
     args.output_dir.mkdir(parents=True)
     (args.output_dir / "config.yaml").write_text(args.config.read_text())
     provenance = {
