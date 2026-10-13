@@ -71,7 +71,8 @@ def select_samples(config: dict, training: dict) -> tuple[list[dict], dict]:
             result = {}
             for episode in sorted(episodes):
                 paths = sorted(p for p in Path(episode).glob(f"step_*{suffix}")
-                               if want_selected is None or (p in selected) == want_selected)
+                               if (p.name.endswith("_wrist_image.png") == (view == "wrist"))
+                               and (want_selected is None or (p in selected) == want_selected))
                 if paths:
                     result[episode] = paths
             return result
@@ -95,6 +96,9 @@ def select_samples(config: dict, training: dict) -> tuple[list[dict], dict]:
                         "train_unsampled_available": sum(len(v) for v in outside.values()),
                         "held_out_available": sum(len(v) for v in val.values()),
                         "paired_train_episodes_available": len(paired_eps)}
+    assert sum(x["train_selected_available"] for x in counts.values()) == 16384
+    assert sum(x["train_unsampled_available"] for x in counts.values()) == 120552 - 16384
+    assert sum(x["held_out_available"] for x in counts.values()) == 13416
 
     sim = json.loads(Path(config["sim_manifest"]).read_text())
     assert sim["protected_state_collisions"] == 0 and len(sim["samples"]) == 40

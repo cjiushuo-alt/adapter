@@ -8,4 +8,4 @@ seed: 20261013
 rl_ds_trajectories_per_group: 16
 oracle_images_per_group: 2
 action_pairs: 3
-output_dir: results/hpcm3_object_highrate_offline/v3
+output_dir: results/hpcm3_object_highrate_offline/v4
