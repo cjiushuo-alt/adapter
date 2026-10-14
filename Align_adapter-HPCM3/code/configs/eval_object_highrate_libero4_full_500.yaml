@@ -1,0 +1,64 @@
+model:
+  model_family: openvla
+  pretrained_checkpoint: /home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro
+  use_hpcm_adapter: true
+  preserve_checkpoint_files: true
+  use_l1_regression: true
+  use_minivlm: true
+  num_diffusion_steps: 50
+  use_film: false
+  num_images_in_input: 2
+  use_proprio: true
+  center_crop: true
+  hpcm_raw_input_bypass: true
+  num_open_loop_steps: 8
+  unnorm_key: libero_object_no_noops
+  load_in_8bit: false
+  load_in_4bit: false
+  save_version: hpcm3-object-highrate-libero4-full-500
+  use_pro_version: true
+  hpcm:
+    hpcm_root: /home/cjs/study/VLA/VLA-Adapter/HPCM
+    checkpoint: /home/cjs/study/VLA/VLA-Adapter/HPCM/ckpt/0.0483.pth.tar
+    model_name: HPCM_Base
+    scale_table_levels: 60
+  adapter:
+    checkpoint: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_libero4_full/adapter-best.pt
+    hpcm_input_dim: 320
+    pre_neck_output_dim: 320
+    pre_neck_spatial_size: 16
+    pre_neck_num_res_blocks: 2
+    pre_neck_dropout: 0.0
+    siglip_dim: 1152
+    dino_dim: 1024
+    neck_num_heads: 8
+    neck_ffn_hidden_dim: null
+    neck_dropout: 0.0
+    neck_activation: gelu
+  vision_backbone:
+    max_layer: 2
+  vla_path: /home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro
+  vla_id: prismatic
+  processor_name: null
+libero:
+  task_suite_name: libero_object
+  num_steps_wait: 10
+  num_trials_per_task: 50
+  initial_states_path: DEFAULT
+  env_img_res: 256
+logging:
+  local_log_dir: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_libero4_full/full_eval
+  use_wandb: false
+  save_rollout_videos: false
+audit:
+  enabled: true
+  compare_train_frames: true
+  train_hash_cache: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_libero4_full/data_audit/train_rgb_sha256.txt
+  split_manifest_path: /media/cjs/shared/linux/Align_adapter/hpcm3_object_dist_libero4/data_split.json
+seed: 7
+experiment:
+  adapter_sha256: 2ba5ee6a9500a812ef58b8c3080744aa0b5700b641106219b72fd2d949ad01d5
+  hpcm_sha256: d0ade22a2f24be655d441b9b52c8f4c7ce0a2a8e862bfb6f9b486f6a787686fe
+  object_pro_sha256: c83c07b9c1d4b527ba5d0f821b28c340c745f4aec282a4953511d494c536d604
+  data_audit_summary: /media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_libero4_full/data_audit/summary.json
+  independent_entropy_latent_parity: results/hpcm3_object_highrate_libero4_full_eval/entropy_latent_parity.json
