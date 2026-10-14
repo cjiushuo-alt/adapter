@@ -9,7 +9,7 @@ output_root=/media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_libero4_
 python_bin=/home/cjs/anaconda3/envs/adapter/bin/python
 config=${code_root}/configs/eval_object_highrate_libero4_full_500.yaml
 
-if [[ "$(findmnt -n -o SOURCE --target "${output_root}")" != /dev/sda1 ]]; then
+if [[ "$(findmnt -n -o SOURCE --target "$(dirname "${output_root}")")" != /dev/sda1 ]]; then
   echo "Refusing to evaluate: output is not on the mechanical disk" >&2
   exit 1
 fi
