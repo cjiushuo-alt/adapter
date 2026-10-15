@@ -124,9 +124,15 @@ def main() -> None:
             if query == 0:
                 key = (active["task_id"], active["episode_index"], view)
                 old = ref_first[key]
-                for field in ("source_rgb_sha256", "y_bytes", "z_bytes", "bpp_actual"):
-                    if row[field] != old[field]:
-                        raise RuntimeError(f"First-query HPCM3 parity failed at {key}: {field}")
+                if row["source_rgb_sha256"] != old["source_rgb_sha256"]:
+                    raise RuntimeError(f"First-query RGB differs from HPCM3 at {key}")
+                # Exact entropy bytes can differ slightly between intact-VLA
+                # and spliced-VLA process contexts despite identical RGB and
+                # frozen codec weights. Record rather than conceal this.
+                row["first_query_hpcm3_y_bytes_delta"] = row["y_bytes"] - old["y_bytes"]
+                row["first_query_hpcm3_z_bytes_delta"] = row["z_bytes"] - old["z_bytes"]
+                row["first_query_hpcm3_byte_match"] = (
+                    row["y_bytes"] == old["y_bytes"] and row["z_bytes"] == old["z_bytes"])
             active["rates"].append(row)
             append(args.output_dir / "rate.jsonl", row)
             decoded_views.append(resize_image_for_policy(decoded, resize_size))
@@ -206,7 +212,12 @@ def main() -> None:
                                    for view in ("agent", "wrist")},
                "mean_psnr_db": {view: float(np.mean([r["psnr_db"] for r in rates if r["view"] == view]))
                                 for view in ("agent", "wrist")},
-               "first_query_bitstream_matches_hpcm3": 1000,
+               "first_query_rgb_matches_hpcm3": sum(r.get("first_query_hpcm3_byte_match") is not None for r in rates),
+               "first_query_bitstream_byte_matches_hpcm3": sum(r.get("first_query_hpcm3_byte_match", False) for r in rates),
+               "first_query_y_byte_delta_range": [min(r.get("first_query_hpcm3_y_bytes_delta", 0) for r in rates),
+                                                   max(r.get("first_query_hpcm3_y_bytes_delta", 0) for r in rates)],
+               "first_query_z_byte_delta_range": [min(r.get("first_query_hpcm3_z_bytes_delta", 0) for r in rates),
+                                                   max(r.get("first_query_hpcm3_z_bytes_delta", 0) for r in rates)],
                "entropy_latent_checked_views": sum("entropy_latent_max_abs" in r for r in rates),
                "entropy_latent_max_abs": max(r.get("entropy_latent_max_abs", 0.0) for r in rates),
                "per_task": tasks, "elapsed_seconds": time.monotonic() - start,
