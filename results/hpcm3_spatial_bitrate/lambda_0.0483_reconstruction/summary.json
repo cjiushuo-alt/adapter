@@ -1,0 +1,122 @@
+{
+  "git_commit": "bae1a90df1973b72495e130a82a177d4798b025d",
+  "seed": 7,
+  "arm": "reconstruction",
+  "lambda": "0.0483",
+  "checkpoints": {
+    "hpcm": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/HPCM/ckpt/0.0483.pth.tar",
+      "sha256": "d0ade22a2f24be655d441b9b52c8f4c7ce0a2a8e862bfb6f9b486f6a787686fe"
+    },
+    "adapter": null,
+    "spatial_pro": {
+      "model.safetensors": "5d70e76161d92fa962c53e78e10b4af3426b6ec7e5c0ea872e7a8162c961a8d3",
+      "action_head--checkpoint.pt": "76aa486231ebce057aa398dc5fcecf71698b293bdcc16d7354e1ac8cb807bdb9",
+      "proprio_projector--checkpoint.pt": "1c61a08975ffade832a2dbfa0587ef6b109ec27f66eb8124f02727aa9827008e"
+    }
+  },
+  "preflight_sha256": "dacffec1ceeed4a3025f62f5e7115a9a6cd6b269d1e66d61313c7cf3ac4b9ed5",
+  "data_audit_sha256": "1f57ceda1b8248d3d6c2bba13632baeb2268e686c9e3e534682f4fc3ca506025",
+  "protocol": "Spatial-Pro, DEFAULT states 0-49/task, seed 7, 10 dummy steps, 8-action queue; same raw RGB entropy codec for both arms; native VLA processor for reconstructed RGB; raw 256 HPCM bypass for HPCM3",
+  "suite": "libero_spatial",
+  "task_count": 10,
+  "total_episodes": 500,
+  "success_episodes": 477,
+  "success_rate": 0.954,
+  "exact_train_frame_matches": 0,
+  "compressed_views": 13830,
+  "mean_actual_bpp": {
+    "agent": 0.3682466784164859,
+    "wrist": 0.4321552444866233
+  },
+  "mean_psnr_db": {
+    "agent": 41.128363621758275,
+    "wrist": 40.9456649252245
+  },
+  "entropy_latent_checked_views": 20,
+  "entropy_latent_max_abs": 0.0,
+  "per_task": [
+    {
+      "task_id": 0,
+      "task_description": "pick up the black bowl between the plate and the ramekin and place it on the plate",
+      "episodes": 50,
+      "success_episodes": 50,
+      "success_rate": 1.0,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 1,
+      "task_description": "pick up the black bowl next to the ramekin and place it on the plate",
+      "episodes": 50,
+      "success_episodes": 48,
+      "success_rate": 0.96,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 2,
+      "task_description": "pick up the black bowl from table center and place it on the plate",
+      "episodes": 50,
+      "success_episodes": 50,
+      "success_rate": 1.0,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 3,
+      "task_description": "pick up the black bowl on the cookie box and place it on the plate",
+      "episodes": 50,
+      "success_episodes": 50,
+      "success_rate": 1.0,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 4,
+      "task_description": "pick up the black bowl in the top drawer of the wooden cabinet and place it on the plate",
+      "episodes": 50,
+      "success_episodes": 49,
+      "success_rate": 0.98,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 5,
+      "task_description": "pick up the black bowl on the ramekin and place it on the plate",
+      "episodes": 50,
+      "success_episodes": 33,
+      "success_rate": 0.66,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 6,
+      "task_description": "pick up the black bowl next to the cookie box and place it on the plate",
+      "episodes": 50,
+      "success_episodes": 49,
+      "success_rate": 0.98,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 7,
+      "task_description": "pick up the black bowl on the stove and place it on the plate",
+      "episodes": 50,
+      "success_episodes": 50,
+      "success_rate": 1.0,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 8,
+      "task_description": "pick up the black bowl next to the plate and place it on the plate",
+      "episodes": 50,
+      "success_episodes": 48,
+      "success_rate": 0.96,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 9,
+      "task_description": "pick up the black bowl on the wooden cabinet and place it on the plate",
+      "episodes": 50,
+      "success_episodes": 50,
+      "success_rate": 1.0,
+      "exact_train_frame_matches": 0
+    }
+  ],
+  "elapsed_seconds": 3775.3197887730785,
+  "demo_initial_state_overlap": "unresolved: RLDS PNG export lacks full demo simulator states"
+}

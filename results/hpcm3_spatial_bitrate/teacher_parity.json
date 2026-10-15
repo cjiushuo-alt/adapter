@@ -1,0 +1,104 @@
+{
+  "hpcm_sha256": "d0ade22a2f24be655d441b9b52c8f4c7ce0a2a8e862bfb6f9b486f6a787686fe",
+  "partial_teacher_sha256": "46c4b6716c8eaa43405c17048a9f0bc25c825e74c0698bac559172c7867a9baa",
+  "object_pro_sha256": "5d70e76161d92fa962c53e78e10b4af3426b6ec7e5c0ea872e7a8162c961a8d3",
+  "split_manifest_sha256": "3e1c1fa86d5cd73a7aff6979f08d47017e1cd1f8ba6f839e88ae391b9aa8fd15",
+  "samples": [
+    {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/Align_adapter/dataset/libero_10_no_noops/episode_000013/step_0000_image.png",
+      "rgb_sha256": "bbf9fec0e81d4ec5f1566178da6d10ad64747ff9c61e264daf64f5e956c4a45f",
+      "teacher_pixels_shape": [
+        1,
+        6,
+        224,
+        224
+      ],
+      "latent_shape": [
+        1,
+        320,
+        16,
+        16
+      ],
+      "target_shape": [
+        1,
+        256,
+        2176
+      ],
+      "hpcm_train_vs_separate_max_abs": 0.0,
+      "object_teacher_block2_max_abs": 0.0,
+      "object_teacher_block2_mae": 0.0
+    },
+    {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/Align_adapter/dataset/libero_goal_no_noops/episode_000014/step_0000_image.png",
+      "rgb_sha256": "2129191c895ad2f6b81dd30ffb919c19370bacb05587e30d65b8788182ad30cf",
+      "teacher_pixels_shape": [
+        1,
+        6,
+        224,
+        224
+      ],
+      "latent_shape": [
+        1,
+        320,
+        16,
+        16
+      ],
+      "target_shape": [
+        1,
+        256,
+        2176
+      ],
+      "hpcm_train_vs_separate_max_abs": 0.0,
+      "object_teacher_block2_max_abs": 0.0,
+      "object_teacher_block2_mae": 0.0
+    },
+    {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/Align_adapter/dataset/libero_object_no_noops/episode_000003/step_0000_image.png",
+      "rgb_sha256": "ced9880e0b09de4bd955529c9777377290f81e4282b77c91e6593a6605db31fc",
+      "teacher_pixels_shape": [
+        1,
+        6,
+        224,
+        224
+      ],
+      "latent_shape": [
+        1,
+        320,
+        16,
+        16
+      ],
+      "target_shape": [
+        1,
+        256,
+        2176
+      ],
+      "hpcm_train_vs_separate_max_abs": 0.0,
+      "object_teacher_block2_max_abs": 0.0,
+      "object_teacher_block2_mae": 0.0
+    },
+    {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/Align_adapter/dataset/libero_spatial_no_noops/episode_000005/step_0000_image.png",
+      "rgb_sha256": "aa4570a3206bd1245ce9b53250b19ea1b96d44afc6820185d2398a51ac5d3a31",
+      "teacher_pixels_shape": [
+        1,
+        6,
+        224,
+        224
+      ],
+      "latent_shape": [
+        1,
+        320,
+        16,
+        16
+      ],
+      "target_shape": [
+        1,
+        256,
+        2176
+      ],
+      "hpcm_train_vs_separate_max_abs": 0.0,
+      "object_teacher_block2_max_abs": 0.0,
+      "object_teacher_block2_mae": 0.0
+    }
+  ]
+}

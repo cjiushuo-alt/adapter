@@ -108,7 +108,8 @@ def main() -> None:
     with (ROOT / "plot_data.csv").open("x", newline="", encoding="utf-8") as stream:
         writer = csv.DictWriter(stream, fieldnames=("lambda", "arm", "bpp_agent", "bpp_wrist",
                                                     "bpp_two_view_mean", "psnr_agent_db", "psnr_wrist_db",
-                                                    "success_episodes", "episodes", "success_rate", "protocol"))
+                                                    "success_episodes", "episodes", "success_rate", "protocol"),
+                                lineterminator="\n")
         writer.writeheader()
         for (lam, arm), (_, summary, _, _, _) in results.items():
             a, w = summary["mean_actual_bpp"]["agent"], summary["mean_actual_bpp"]["wrist"]
@@ -140,7 +141,6 @@ def main() -> None:
     fig.text(0.11, 0.005, "*Different HPCM input protocol; x from independent static images, not its rollout.", fontsize=7)
     fig.tight_layout(rect=(0, 0.04, 1, 1))
     fig.savefig(ROOT / "bitrate_success.png", dpi=170)
-    fig.savefig(ROOT / "bitrate_success.svg")
     plt.close(fig)
 
     table = []
@@ -165,6 +165,8 @@ def main() -> None:
 {chr(10).join(table)}
 
 高码率两条路径共享 Spatial-Pro、HPCM、codec 数值预处理及官方初始状态；后续闭环轨迹不同，故整段轨迹的 bpp/PSNR 是各自策略实际看到的图像分布，不是逐帧配对图像指标。表中 bpp 为真实 y/z bitstream 字节数除以 256²；PSNR 使用熵解码 RGB。每组 500 episode 的初始 state SHA、成功/失败、每 task 结果及逐查询 bpp/PSNR 在[结果目录](../results/hpcm3_spatial_bitrate/)；完整逐帧 SHA audit 留在机械盘，Git 仅保存路径和文件 SHA。新增三组每组抽检 20 张视图（每 task 首次查询双相机）的 bitstream 熵解码 latent 与 HPCM3 forward latent 完全一致，max abs=0；并非逐帧证明。训练图像与评测 raw RGB 的 exact SHA 匹配为 0。
+
+高码率重建与 HPCM3 仅相差 **2/500（0.4 个百分点）**。按配对初始状态比较，重建独赢 6 个、HPCM3 独赢 8 个；差距很小，不能据此宣称 HPCM3 控制性能优于重建。低码率重建比高码率重建多成功 8 个，配对状态低码率独赢 12、高码率独赢 4；闭环结果在此样本上**不单调**，不能以 PSNR 更高推断成功率必然更高。
 
 ## 各 task 成功次数
 

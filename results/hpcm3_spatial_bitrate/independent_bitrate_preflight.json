@@ -1,0 +1,680 @@
+{
+  "source_manifest_sha256": "c942163e2bcad9664c8486ad88fba1fbd027e15e7f52160f960564472238dc57",
+  "source": "independent Spatial fresh-reset, non-official states",
+  "rates": [
+    {
+      "lambda": "0.0018",
+      "checkpoint_sha256": "dc7a6c0f4b93f2294df1ce5fc49a21ab5d8107b91c14e0ee819a9f8dbbb30964",
+      "samples": [
+        {
+          "task_id": 0,
+          "view": "agent",
+          "rgb_sha256": "9a282012e377b90d3735e6a10d5a9228ed30ecd51541164db3b17126b0938344",
+          "bpp_actual": 0.06201171875,
+          "psnr_db": 33.30331207587962,
+          "entropy_latent_max_abs": 0.0
+        },
+        {
+          "task_id": 0,
+          "view": "wrist",
+          "rgb_sha256": "a4004b604cdd1f8535fadef27bced49c0eacb0e203a81ecba6a3c7f369775caf",
+          "bpp_actual": 0.0498046875,
+          "psnr_db": 33.605036739646074,
+          "entropy_latent_max_abs": 0.0
+        },
+        {
+          "task_id": 0,
+          "view": "agent",
+          "rgb_sha256": "f81c02401c5f681554fe29df7327b144e74910a1768a550b0a3c6bff79a9f14b",
+          "bpp_actual": 0.0634765625,
+          "psnr_db": 33.28626068320193,
+          "entropy_latent_max_abs": 0.0
+        },
+        {
+          "task_id": 0,
+          "view": "wrist",
+          "rgb_sha256": "443fc5eaee0ce9e5d7f008eafcce7195f8f208f2a1f75311c56d22e30a324f97",
+          "bpp_actual": 0.0478515625,
+          "psnr_db": 33.5774640017536,
+          "entropy_latent_max_abs": 0.0
+        },
+        {
+          "task_id": 1,
+          "view": "agent",
+          "rgb_sha256": "1f5f80258a01bce0da3669a2b6482b895a4819eddd7ff99fff33f913f30c19d6",
+          "bpp_actual": 0.0625,
+          "psnr_db": 33.14162178895618,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 1,
+          "view": "wrist",
+          "rgb_sha256": "f1d55d648e6578def02f5a1fc4361098b04cbf82947daaff7bd0b874176cb38f",
+          "bpp_actual": 0.04638671875,
+          "psnr_db": 34.447533480280285,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 1,
+          "view": "agent",
+          "rgb_sha256": "dbe39bf5ab5ae9f88199200b8140c18b0aa7da4008ca51a4cfb3e5b454ccf478",
+          "bpp_actual": 0.0634765625,
+          "psnr_db": 33.20164720629177,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 1,
+          "view": "wrist",
+          "rgb_sha256": "e2f0593b400e2f63e9dd36013734c0aed9e891dbad71f8e988ab134f9ac6e053",
+          "bpp_actual": 0.044921875,
+          "psnr_db": 34.45305929686211,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 2,
+          "view": "agent",
+          "rgb_sha256": "b3f31882e05511401ad2bb8836f621dd5173e50aa7ef19035d1d14084857b214",
+          "bpp_actual": 0.06298828125,
+          "psnr_db": 33.19559570695499,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 2,
+          "view": "wrist",
+          "rgb_sha256": "a498222750756e229bd3d7dea90abfaf78ba4a921ae494f12fc6b1eca3f0db34",
+          "bpp_actual": 0.05126953125,
+          "psnr_db": 32.42761971051611,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 2,
+          "view": "agent",
+          "rgb_sha256": "31263b1e654c4068767b16f258c623490318411bb65acad6b979f938e36875e8",
+          "bpp_actual": 0.06201171875,
+          "psnr_db": 33.19481230357126,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 2,
+          "view": "wrist",
+          "rgb_sha256": "b8731d8825e42f5d3a1bc6a3d48547e66d6123d9021d1e7e000127d9591c3771",
+          "bpp_actual": 0.05224609375,
+          "psnr_db": 32.491128457630616,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 3,
+          "view": "agent",
+          "rgb_sha256": "5b034b06a83e45bb8751bc5e98492ab7fed6cb878c60b5a2e6511b494ea9e1c3",
+          "bpp_actual": 0.0625,
+          "psnr_db": 33.038743781122115,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 3,
+          "view": "wrist",
+          "rgb_sha256": "41a3f8f5d67ffed046cabd10f59ff6128ef94efa4f43a92206fd35791db53d04",
+          "bpp_actual": 0.0439453125,
+          "psnr_db": 34.58758489310164,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 3,
+          "view": "agent",
+          "rgb_sha256": "a3221ed0e0fc206ff9d4e0fce6847a7eb53121918821915991ad658644e50015",
+          "bpp_actual": 0.0625,
+          "psnr_db": 33.23267466858591,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 3,
+          "view": "wrist",
+          "rgb_sha256": "99ee74fb31d1633bfa64a9ec6a9493d65efe96a00477e718b9c3ce234eeb3757",
+          "bpp_actual": 0.044921875,
+          "psnr_db": 34.75615513798096,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 4,
+          "view": "agent",
+          "rgb_sha256": "94091d709e926069fe35a77dea733da2e4ece089391393d33c7ec29d78482b0d",
+          "bpp_actual": 0.05859375,
+          "psnr_db": 33.26753761271549,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 4,
+          "view": "wrist",
+          "rgb_sha256": "77bea84eafa4336b928a964abef4d8891cf4af094314411ce8031d7bafd5f2e2",
+          "bpp_actual": 0.0439453125,
+          "psnr_db": 34.70663202420723,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 4,
+          "view": "agent",
+          "rgb_sha256": "fa5fa770a96d545a8cefffe580b1902733d21864c1273e658feb799cb21c1187",
+          "bpp_actual": 0.0576171875,
+          "psnr_db": 33.14511543564498,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 4,
+          "view": "wrist",
+          "rgb_sha256": "21805140df2a763c5a2e6a2332c6a4f69d457539291555497923f4e7c9bf3e31",
+          "bpp_actual": 0.04736328125,
+          "psnr_db": 34.47063752877023,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 5,
+          "view": "agent",
+          "rgb_sha256": "31602d8c25a5bcbec3ff464bdacef9b7c80bd92e55d28bbbefb73bec15811312",
+          "bpp_actual": 0.064453125,
+          "psnr_db": 33.3322043211926,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 5,
+          "view": "wrist",
+          "rgb_sha256": "153624c8754a2709c56088fd8b13d7a38a70fe7bcb50de258bef69008d0ef274",
+          "bpp_actual": 0.046875,
+          "psnr_db": 34.334417950581724,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 5,
+          "view": "agent",
+          "rgb_sha256": "f27f27e5f877fc40de11f3ddae13d4c3d7059b6e130d0af3e8531d320c92b402",
+          "bpp_actual": 0.0625,
+          "psnr_db": 33.18445136215746,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 5,
+          "view": "wrist",
+          "rgb_sha256": "fc609cc1b88f93c0aef5e3d1aabca129d38b3a0cde45f030e3af2d0b74fc6076",
+          "bpp_actual": 0.04833984375,
+          "psnr_db": 34.3671287629985,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 6,
+          "view": "agent",
+          "rgb_sha256": "57f25927ad2521ad83acc5c6771d7460b151c1aff4be880537d7b3473a93549a",
+          "bpp_actual": 0.0615234375,
+          "psnr_db": 33.198865548767614,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 6,
+          "view": "wrist",
+          "rgb_sha256": "b38b19928ce70fd4a5a1b41deb15da5ecaf428b13cc46c34559d99c27b1bcf72",
+          "bpp_actual": 0.05029296875,
+          "psnr_db": 32.85394198043679,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 6,
+          "view": "agent",
+          "rgb_sha256": "65c92e633b014fb26fcbd912ae67e011265475c5ce36e1913471f70b5091f5f7",
+          "bpp_actual": 0.06005859375,
+          "psnr_db": 33.21052507078034,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 6,
+          "view": "wrist",
+          "rgb_sha256": "ae19d0ea8fc36d750dbbe164d87ffd9843c4129f1765e17eaa44b8626f908380",
+          "bpp_actual": 0.05029296875,
+          "psnr_db": 32.78759545842323,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 7,
+          "view": "agent",
+          "rgb_sha256": "d2fc1072c3e42c3906d4c5f5f5c0486926c3357515b418512e3130e9eed17412",
+          "bpp_actual": 0.060546875,
+          "psnr_db": 33.37671383677129,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 7,
+          "view": "wrist",
+          "rgb_sha256": "ea988afc3a14aada6f0756f97f0ce0228f82f8686a5723d8f0ca5bcf47a8fd3c",
+          "bpp_actual": 0.05029296875,
+          "psnr_db": 32.79108680720296,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 7,
+          "view": "agent",
+          "rgb_sha256": "7d2809245e2a67add43196e855a697145cc53f7971102ba9888095c9611936df",
+          "bpp_actual": 0.06005859375,
+          "psnr_db": 33.56852199582867,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 7,
+          "view": "wrist",
+          "rgb_sha256": "473920867705ed5e0b7af20b44be78408e5f574e4df95b4559fa5d5cabb65895",
+          "bpp_actual": 0.0478515625,
+          "psnr_db": 32.71377256441036,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 8,
+          "view": "agent",
+          "rgb_sha256": "0df0df4a2dac3c3d03f338f675cc2019d3b103873b20789d02b9a5459731cf78",
+          "bpp_actual": 0.06201171875,
+          "psnr_db": 33.18813182348919,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 8,
+          "view": "wrist",
+          "rgb_sha256": "75d74d74cbc59ddb1e7a9d0b83f65871c121b2c4c3e2bb6029f13070dbefde2d",
+          "bpp_actual": 0.04541015625,
+          "psnr_db": 34.7086717785885,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 8,
+          "view": "agent",
+          "rgb_sha256": "c648d86837edad2367d7e92020c1cc20e941c0f0a1905de8ef15aaf46976b865",
+          "bpp_actual": 0.06103515625,
+          "psnr_db": 33.31081509748137,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 8,
+          "view": "wrist",
+          "rgb_sha256": "4b5b34d5c0439916d9947aa35193f12852ebc77af6bba071b45f5e8cf15b3723",
+          "bpp_actual": 0.04736328125,
+          "psnr_db": 34.29657724058031,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 9,
+          "view": "agent",
+          "rgb_sha256": "936e8d843856f3bba2e1cc701c8497a712c7f5f48027e5b22d2c6b3f7673cf56",
+          "bpp_actual": 0.0615234375,
+          "psnr_db": 33.48783028844764,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 9,
+          "view": "wrist",
+          "rgb_sha256": "6029674bd25c69e5039ddf213a944a6d4461ed48710b0924bdf50094e48ef56d",
+          "bpp_actual": 0.05078125,
+          "psnr_db": 32.92250346674659,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 9,
+          "view": "agent",
+          "rgb_sha256": "0246e6d91da7c1232452eb6640d965276e82f9e21b85f44f25854fd3c22becd0",
+          "bpp_actual": 0.0615234375,
+          "psnr_db": 33.26571491681107,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 9,
+          "view": "wrist",
+          "rgb_sha256": "fcd05ae5d1bad0bc67ecd5bfadc5c40eaa91af49832439ec822f6dae2914dd2a",
+          "bpp_actual": 0.0458984375,
+          "psnr_db": 32.804689578969885,
+          "entropy_latent_max_abs": null
+        }
+      ],
+      "mean": {
+        "agent": {
+          "bpp_actual": 0.0616455078125,
+          "psnr_db": 33.256554776232576
+        },
+        "wrist": {
+          "bpp_actual": 0.047802734375,
+          "psnr_db": 33.705161842984374
+        }
+      },
+      "entropy_latent_checked_views": 4
+    },
+    {
+      "lambda": "0.0483",
+      "checkpoint_sha256": "d0ade22a2f24be655d441b9b52c8f4c7ce0a2a8e862bfb6f9b486f6a787686fe",
+      "samples": [
+        {
+          "task_id": 0,
+          "view": "agent",
+          "rgb_sha256": "9a282012e377b90d3735e6a10d5a9228ed30ecd51541164db3b17126b0938344",
+          "bpp_actual": 0.33251953125,
+          "psnr_db": 41.60805447307685,
+          "entropy_latent_max_abs": 0.0
+        },
+        {
+          "task_id": 0,
+          "view": "wrist",
+          "rgb_sha256": "a4004b604cdd1f8535fadef27bced49c0eacb0e203a81ecba6a3c7f369775caf",
+          "bpp_actual": 0.30078125,
+          "psnr_db": 42.072413546686136,
+          "entropy_latent_max_abs": 0.0
+        },
+        {
+          "task_id": 0,
+          "view": "agent",
+          "rgb_sha256": "f81c02401c5f681554fe29df7327b144e74910a1768a550b0a3c6bff79a9f14b",
+          "bpp_actual": 0.33056640625,
+          "psnr_db": 41.54995371612982,
+          "entropy_latent_max_abs": 0.0
+        },
+        {
+          "task_id": 0,
+          "view": "wrist",
+          "rgb_sha256": "443fc5eaee0ce9e5d7f008eafcce7195f8f208f2a1f75311c56d22e30a324f97",
+          "bpp_actual": 0.291015625,
+          "psnr_db": 42.052793543287954,
+          "entropy_latent_max_abs": 0.0
+        },
+        {
+          "task_id": 1,
+          "view": "agent",
+          "rgb_sha256": "1f5f80258a01bce0da3669a2b6482b895a4819eddd7ff99fff33f913f30c19d6",
+          "bpp_actual": 0.35205078125,
+          "psnr_db": 41.44276691725324,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 1,
+          "view": "wrist",
+          "rgb_sha256": "f1d55d648e6578def02f5a1fc4361098b04cbf82947daaff7bd0b874176cb38f",
+          "bpp_actual": 0.25,
+          "psnr_db": 42.442698749408585,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 1,
+          "view": "agent",
+          "rgb_sha256": "dbe39bf5ab5ae9f88199200b8140c18b0aa7da4008ca51a4cfb3e5b454ccf478",
+          "bpp_actual": 0.34619140625,
+          "psnr_db": 41.34348161310076,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 1,
+          "view": "wrist",
+          "rgb_sha256": "e2f0593b400e2f63e9dd36013734c0aed9e891dbad71f8e988ab134f9ac6e053",
+          "bpp_actual": 0.2509765625,
+          "psnr_db": 42.47074367968881,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 2,
+          "view": "agent",
+          "rgb_sha256": "b3f31882e05511401ad2bb8836f621dd5173e50aa7ef19035d1d14084857b214",
+          "bpp_actual": 0.341796875,
+          "psnr_db": 41.34711659556081,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 2,
+          "view": "wrist",
+          "rgb_sha256": "a498222750756e229bd3d7dea90abfaf78ba4a921ae494f12fc6b1eca3f0db34",
+          "bpp_actual": 0.3935546875,
+          "psnr_db": 40.93891970019348,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 2,
+          "view": "agent",
+          "rgb_sha256": "31263b1e654c4068767b16f258c623490318411bb65acad6b979f938e36875e8",
+          "bpp_actual": 0.34033203125,
+          "psnr_db": 41.53576446244949,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 2,
+          "view": "wrist",
+          "rgb_sha256": "b8731d8825e42f5d3a1bc6a3d48547e66d6123d9021d1e7e000127d9591c3771",
+          "bpp_actual": 0.39111328125,
+          "psnr_db": 41.10359043492322,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 3,
+          "view": "agent",
+          "rgb_sha256": "5b034b06a83e45bb8751bc5e98492ab7fed6cb878c60b5a2e6511b494ea9e1c3",
+          "bpp_actual": 0.35546875,
+          "psnr_db": 41.23227116759273,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 3,
+          "view": "wrist",
+          "rgb_sha256": "41a3f8f5d67ffed046cabd10f59ff6128ef94efa4f43a92206fd35791db53d04",
+          "bpp_actual": 0.24609375,
+          "psnr_db": 42.53454379612171,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 3,
+          "view": "agent",
+          "rgb_sha256": "a3221ed0e0fc206ff9d4e0fce6847a7eb53121918821915991ad658644e50015",
+          "bpp_actual": 0.3447265625,
+          "psnr_db": 41.40739869758241,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 3,
+          "view": "wrist",
+          "rgb_sha256": "99ee74fb31d1633bfa64a9ec6a9493d65efe96a00477e718b9c3ce234eeb3757",
+          "bpp_actual": 0.24658203125,
+          "psnr_db": 42.52255862132273,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 4,
+          "view": "agent",
+          "rgb_sha256": "94091d709e926069fe35a77dea733da2e4ece089391393d33c7ec29d78482b0d",
+          "bpp_actual": 0.32470703125,
+          "psnr_db": 41.655822428447145,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 4,
+          "view": "wrist",
+          "rgb_sha256": "77bea84eafa4336b928a964abef4d8891cf4af094314411ce8031d7bafd5f2e2",
+          "bpp_actual": 0.24658203125,
+          "psnr_db": 42.62880258222539,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 4,
+          "view": "agent",
+          "rgb_sha256": "fa5fa770a96d545a8cefffe580b1902733d21864c1273e658feb799cb21c1187",
+          "bpp_actual": 0.3291015625,
+          "psnr_db": 41.643137981855986,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 4,
+          "view": "wrist",
+          "rgb_sha256": "21805140df2a763c5a2e6a2332c6a4f69d457539291555497923f4e7c9bf3e31",
+          "bpp_actual": 0.2587890625,
+          "psnr_db": 42.39744138486171,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 5,
+          "view": "agent",
+          "rgb_sha256": "31602d8c25a5bcbec3ff464bdacef9b7c80bd92e55d28bbbefb73bec15811312",
+          "bpp_actual": 0.345703125,
+          "psnr_db": 41.38656015122861,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 5,
+          "view": "wrist",
+          "rgb_sha256": "153624c8754a2709c56088fd8b13d7a38a70fe7bcb50de258bef69008d0ef274",
+          "bpp_actual": 0.26220703125,
+          "psnr_db": 42.305462987266864,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 5,
+          "view": "agent",
+          "rgb_sha256": "f27f27e5f877fc40de11f3ddae13d4c3d7059b6e130d0af3e8531d320c92b402",
+          "bpp_actual": 0.34423828125,
+          "psnr_db": 41.434194388445775,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 5,
+          "view": "wrist",
+          "rgb_sha256": "fc609cc1b88f93c0aef5e3d1aabca129d38b3a0cde45f030e3af2d0b74fc6076",
+          "bpp_actual": 0.26806640625,
+          "psnr_db": 42.27313815770023,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 6,
+          "view": "agent",
+          "rgb_sha256": "57f25927ad2521ad83acc5c6771d7460b151c1aff4be880537d7b3473a93549a",
+          "bpp_actual": 0.337890625,
+          "psnr_db": 41.44036660691806,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 6,
+          "view": "wrist",
+          "rgb_sha256": "b38b19928ce70fd4a5a1b41deb15da5ecaf428b13cc46c34559d99c27b1bcf72",
+          "bpp_actual": 0.3564453125,
+          "psnr_db": 41.51461527453413,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 6,
+          "view": "agent",
+          "rgb_sha256": "65c92e633b014fb26fcbd912ae67e011265475c5ce36e1913471f70b5091f5f7",
+          "bpp_actual": 0.33251953125,
+          "psnr_db": 41.44063639811254,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 6,
+          "view": "wrist",
+          "rgb_sha256": "ae19d0ea8fc36d750dbbe164d87ffd9843c4129f1765e17eaa44b8626f908380",
+          "bpp_actual": 0.341796875,
+          "psnr_db": 41.72704561288394,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 7,
+          "view": "agent",
+          "rgb_sha256": "d2fc1072c3e42c3906d4c5f5f5c0486926c3357515b418512e3130e9eed17412",
+          "bpp_actual": 0.3173828125,
+          "psnr_db": 41.69311620358371,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 7,
+          "view": "wrist",
+          "rgb_sha256": "ea988afc3a14aada6f0756f97f0ce0228f82f8686a5723d8f0ca5bcf47a8fd3c",
+          "bpp_actual": 0.34375,
+          "psnr_db": 41.73125930690002,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 7,
+          "view": "agent",
+          "rgb_sha256": "7d2809245e2a67add43196e855a697145cc53f7971102ba9888095c9611936df",
+          "bpp_actual": 0.31201171875,
+          "psnr_db": 41.734165241773255,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 7,
+          "view": "wrist",
+          "rgb_sha256": "473920867705ed5e0b7af20b44be78408e5f574e4df95b4559fa5d5cabb65895",
+          "bpp_actual": 0.34423828125,
+          "psnr_db": 41.8199349194377,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 8,
+          "view": "agent",
+          "rgb_sha256": "0df0df4a2dac3c3d03f338f675cc2019d3b103873b20789d02b9a5459731cf78",
+          "bpp_actual": 0.3349609375,
+          "psnr_db": 41.49214577608683,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 8,
+          "view": "wrist",
+          "rgb_sha256": "75d74d74cbc59ddb1e7a9d0b83f65871c121b2c4c3e2bb6029f13070dbefde2d",
+          "bpp_actual": 0.2421875,
+          "psnr_db": 42.687340797334045,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 8,
+          "view": "agent",
+          "rgb_sha256": "c648d86837edad2367d7e92020c1cc20e941c0f0a1905de8ef15aaf46976b865",
+          "bpp_actual": 0.337890625,
+          "psnr_db": 41.530552067367296,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 8,
+          "view": "wrist",
+          "rgb_sha256": "4b5b34d5c0439916d9947aa35193f12852ebc77af6bba071b45f5e8cf15b3723",
+          "bpp_actual": 0.2607421875,
+          "psnr_db": 42.40080564803435,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 9,
+          "view": "agent",
+          "rgb_sha256": "936e8d843856f3bba2e1cc701c8497a712c7f5f48027e5b22d2c6b3f7673cf56",
+          "bpp_actual": 0.32373046875,
+          "psnr_db": 41.603752168699025,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 9,
+          "view": "wrist",
+          "rgb_sha256": "6029674bd25c69e5039ddf213a944a6d4461ed48710b0924bdf50094e48ef56d",
+          "bpp_actual": 0.3349609375,
+          "psnr_db": 41.64173969667361,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 9,
+          "view": "agent",
+          "rgb_sha256": "0246e6d91da7c1232452eb6640d965276e82f9e21b85f44f25854fd3c22becd0",
+          "bpp_actual": 0.32568359375,
+          "psnr_db": 41.54817752208609,
+          "entropy_latent_max_abs": null
+        },
+        {
+          "task_id": 9,
+          "view": "wrist",
+          "rgb_sha256": "fcd05ae5d1bad0bc67ecd5bfadc5c40eaa91af49832439ec822f6dae2914dd2a",
+          "bpp_actual": 0.32861328125,
+          "psnr_db": 41.85528514188378,
+          "entropy_latent_max_abs": null
+        }
+      ],
+      "mean": {
+        "agent": {
+          "bpp_actual": 0.3354736328125,
+          "psnr_db": 41.503471728867524
+        },
+        "wrist": {
+          "bpp_actual": 0.2979248046875,
+          "psnr_db": 42.056056679068426
+        }
+      },
+      "entropy_latent_checked_views": 4
+    }
+  ]
+}

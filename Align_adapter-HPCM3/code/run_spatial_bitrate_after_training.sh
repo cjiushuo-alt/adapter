@@ -63,6 +63,7 @@ if [[ "$(git -C "${repo_root}" branch --show-current)" != exp/hpcm3-object-dist 
   exit 0
 fi
 git -C "${repo_root}" add reports/hpcm3_spatial_bitrate.md results/hpcm3_spatial_bitrate
+git -C "${repo_root}" add -f results/hpcm3_spatial_bitrate/bitrate_success.png
 git -C "${repo_root}" diff --cached --check
 git -C "${repo_root}" commit -m "Report Spatial HPCM bitrate-success experiment"
 for attempt in 1 2 3; do

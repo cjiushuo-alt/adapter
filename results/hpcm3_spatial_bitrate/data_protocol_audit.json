@@ -1,0 +1,19 @@
+{
+  "split_manifest_sha256": "3e1c1fa86d5cd73a7aff6979f08d47017e1cd1f8ba6f839e88ae391b9aa8fd15",
+  "train_hash_cache_sha256": "f906f72464f8fd8388909ce63e6ff8d1238bbdf11b24c8fbc2d877f0d64447c4",
+  "val_hash_cache_sha256": "21d18e44498b3e203581b688502fa6dfcb69ca2a1cd621bbdeb1ebfa1bdeb52a",
+  "spatial_formal_audit_sha256": "c8fe1209772df1682e22f60127e3c0c8103074367808334824d7d67d90f1ed87",
+  "sim_manifest_sha256": "c942163e2bcad9664c8486ad88fba1fbd027e15e7f52160f960564472238dc57",
+  "train_trajectories": 1523,
+  "val_trajectories": 170,
+  "train_unique_rgb_hashes": 493840,
+  "val_unique_rgb_hashes": 53090,
+  "train_val_exact_rgb_overlap": 0,
+  "train_formal_exact_rgb_overlap": 0,
+  "train_sim_exact_rgb_overlap": 0,
+  "sim_formal_initial_state_overlap": 0,
+  "sim_formal_exact_rgb_overlap": 0,
+  "formal_state_count": 500,
+  "sim_state_count": 20,
+  "demo_initial_state_overlap": "unknown: RLDS PNG export lacks complete simulator states"
+}

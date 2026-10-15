@@ -1,0 +1,8 @@
+{
+  "best_checkpoint": "/media/cjs/shared/linux/Align_adapter/hpcm3_spatial_highrate_libero4_full/checkpoints/epoch-epoch=03-step-step=98304-val_loss=0.0163.ckpt",
+  "best_val_loss": 0.016316786408424377,
+  "adapter_checkpoint": "/media/cjs/shared/linux/Align_adapter/hpcm3_spatial_highrate_libero4_full/adapter-best.pt",
+  "stopped_epoch": 4,
+  "global_step": 100000,
+  "wandb_run_id": "h3sp4full42"
+}
