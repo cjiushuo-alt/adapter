@@ -86,14 +86,14 @@ def main() -> None:
     parser.add_argument("--lambda-value", choices=("0.0018", "0.0483"), required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     args = parser.parse_args()
-    if args.arm == "hpcm3" and args.lambda_value != "0.0483":
-        raise ValueError("Historical low-rate Spatial HPCM3 must be reused, not rerun")
     if args.output_dir.exists():
         raise FileExistsError(args.output_dir)
     base_path = REPO / "results/hpcm3_libero4/spatial/config.yaml"
     raw = yaml.safe_load(base_path.read_text())
     hpcm = REPO / "HPCM/ckpt" / f"{args.lambda_value}.pth.tar"
-    adapter = Path("/media/cjs/shared/linux/Align_adapter/hpcm3_spatial_highrate_libero4_full/adapter-best.pt")
+    adapter_root = ("hpcm3_spatial_lowrate_libero4_full" if args.lambda_value == "0.0018"
+                    else "hpcm3_spatial_highrate_libero4_full")
+    adapter = Path("/media/cjs/shared/linux/Align_adapter") / adapter_root / "adapter-best.pt"
     raw["model"]["hpcm"]["checkpoint"] = str(hpcm)
     raw["model"]["adapter"]["checkpoint"] = str(adapter)
     raw["model"]["use_hpcm_adapter"] = args.arm == "hpcm3"
