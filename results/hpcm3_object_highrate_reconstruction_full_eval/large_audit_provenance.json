@@ -1,0 +1,6 @@
+{
+  "path": "/media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_reconstruction_full/full_eval_attempt2/audit.jsonl",
+  "sha256": "334b5a29a0665c8fb974363add98b9832d0ecd0777bec474abf59c153c09a67b",
+  "bytes": 36097908,
+  "note": "Full frame audit retained on HDD; omitted from Git due to size"
+}

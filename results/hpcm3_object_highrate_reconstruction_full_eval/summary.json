@@ -1,0 +1,144 @@
+{
+  "git_commit": "056ad1f9e26040dcc2c8b0de2022a72cd40c8e80",
+  "seed": 7,
+  "suite": "libero_object",
+  "arm": "reconstruction",
+  "lambda": "0.0483",
+  "checkpoints": {
+    "adapter": {
+      "path": "/media/cjs/shared/linux/Align_adapter/hpcm3_object_highrate_libero4_full/adapter-best.pt",
+      "sha256": "2ba5ee6a9500a812ef58b8c3080744aa0b5700b641106219b72fd2d949ad01d5"
+    },
+    "hpcm": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/HPCM/ckpt/0.0483.pth.tar",
+      "sha256": "d0ade22a2f24be655d441b9b52c8f4c7ce0a2a8e862bfb6f9b486f6a787686fe"
+    },
+    "object_pro": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro/model.safetensors",
+      "sha256": "c83c07b9c1d4b527ba5d0f821b28c340c745f4aec282a4953511d494c536d604"
+    },
+    "action_head": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro/action_head--checkpoint.pt",
+      "sha256": "dd5642994a89f81dfe33cdca460479972548de8eaa26aacdbb3b0a7516b2d723"
+    },
+    "proprio_projector": {
+      "path": "/home/cjs/study/VLA/VLA-Adapter/outputs/LIBERO-Object-Pro/proprio_projector--checkpoint.pt",
+      "sha256": "3201fd9f18cb178958d656ac2ddd7163f8a7853535856243907f5b633af7c14c"
+    }
+  },
+  "hpcm3_reference_summary_sha256": "ee842adddaad81d611497eabc8d9cc002617d3cba82e9651c6f4137f80dc1ef1",
+  "hpcm3_reference_episodes_sha256": "621f4ec3b7f38bb27d3fd4540a1a53b5f4b4bebd2df5b711c8c3d04c7cbadb3d",
+  "hpcm3_reference_rates_sha256": "5bef7a70de3c7255b9d9f7bbbe1a2196f14d52e4676549f95b2d0b997b529da2",
+  "data_audit_summary_sha256": "1bd03e757ce81a0798c2a3067fd849dae95de5d017bf827bc953aa69f93feee2",
+  "protocol": "Raw 256 RGB -> real y/z entropy bitstream -> decoded RGB -> Object-Pro native image path; DEFAULT states 0-49/task, seed 7, 10 dummy steps, 8-action queue",
+  "task_count": 10,
+  "total_episodes": 500,
+  "success_episodes": 487,
+  "success_rate": 0.974,
+  "exact_train_frame_matches": 0,
+  "compressed_views": 17836,
+  "mean_actual_bpp": {
+    "agent": 0.5540460764920666,
+    "wrist": 0.5098439208272595
+  },
+  "mean_psnr_db": {
+    "agent": 39.013674028906564,
+    "wrist": 39.8070847969303
+  },
+  "first_query_rgb_matches_hpcm3": 1000,
+  "first_query_bitstream_byte_matches_hpcm3": 336,
+  "first_query_y_byte_delta_range": [
+    -24,
+    28
+  ],
+  "first_query_z_byte_delta_range": [
+    -4,
+    4
+  ],
+  "entropy_latent_checked_views": 20,
+  "entropy_latent_max_abs": 0.0,
+  "per_task": [
+    {
+      "task_id": 0,
+      "task_description": "pick up the alphabet soup and place it in the basket",
+      "episodes": 50,
+      "success_episodes": 48,
+      "success_rate": 0.96,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 1,
+      "task_description": "pick up the cream cheese and place it in the basket",
+      "episodes": 50,
+      "success_episodes": 49,
+      "success_rate": 0.98,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 2,
+      "task_description": "pick up the salad dressing and place it in the basket",
+      "episodes": 50,
+      "success_episodes": 50,
+      "success_rate": 1.0,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 3,
+      "task_description": "pick up the bbq sauce and place it in the basket",
+      "episodes": 50,
+      "success_episodes": 42,
+      "success_rate": 0.84,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 4,
+      "task_description": "pick up the ketchup and place it in the basket",
+      "episodes": 50,
+      "success_episodes": 50,
+      "success_rate": 1.0,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 5,
+      "task_description": "pick up the tomato sauce and place it in the basket",
+      "episodes": 50,
+      "success_episodes": 49,
+      "success_rate": 0.98,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 6,
+      "task_description": "pick up the butter and place it in the basket",
+      "episodes": 50,
+      "success_episodes": 50,
+      "success_rate": 1.0,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 7,
+      "task_description": "pick up the milk and place it in the basket",
+      "episodes": 50,
+      "success_episodes": 49,
+      "success_rate": 0.98,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 8,
+      "task_description": "pick up the chocolate pudding and place it in the basket",
+      "episodes": 50,
+      "success_episodes": 50,
+      "success_rate": 1.0,
+      "exact_train_frame_matches": 0
+    },
+    {
+      "task_id": 9,
+      "task_description": "pick up the orange juice and place it in the basket",
+      "episodes": 50,
+      "success_episodes": 50,
+      "success_rate": 1.0,
+      "exact_train_frame_matches": 0
+    }
+  ],
+  "elapsed_seconds": 4502.585148993065,
+  "demo_initial_state_overlap": "unresolved: RLDS PNG export lacks full demo simulator states"
+}
