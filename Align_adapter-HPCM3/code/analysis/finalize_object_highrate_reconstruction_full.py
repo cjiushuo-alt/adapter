@@ -38,7 +38,7 @@ def main() -> None:
     tasks = records(source / "task_results.jsonl")
     baseline_path = REPO / "results/hpcm3_object_highrate_libero4_full_eval/episode_results.jsonl"
     baseline = records(baseline_path)
-    if summary["total_episodes"] != 500 or len(episodes) != len(baseline) != 500 or len(tasks) != 10:
+    if summary["total_episodes"] != 500 or len(episodes) != 500 or len(baseline) != 500 or len(tasks) != 10:
         raise ValueError("Incomplete 10x50 Object result")
     if summary["first_query_rgb_matches_hpcm3"] != 1000 or \
             summary["entropy_latent_checked_views"] != 20 or summary["entropy_latent_max_abs"] != 0:
