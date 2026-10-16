@@ -30,6 +30,8 @@ fi
 "${python_bin}" "${code_root}/analysis/build_paper_bitrate_success.py" \
   >"${train_root}/logs/paper_build.log" 2>&1
 git add reports/hpcm3_paper_bitrate_success.md results/hpcm3_paper_bitrate_success
+# Repository-wide *.png ignore also catches the requested paper figure.
+git add -f results/hpcm3_paper_bitrate_success/bitrate_success.png
 git diff --cached --check
 git commit -m "Publish audited Spatial and Object bitrate-success paper comparison"
 for attempt in 1 2 3; do
