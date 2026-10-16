@@ -71,18 +71,31 @@ def main() -> None:
         assert a["summary"]["checkpoints"]["hpcm"]["sha256"] == b["summary"]["checkpoints"]["hpcm"]["sha256"]
         vla_key = "spatial_pro" if suite == "Spatial" else "object_pro"
         assert a["summary"]["checkpoints"][vla_key] == b["summary"]["checkpoints"][vla_key]
+        if suite == "Object":
+            for key in ("action_head", "proprio_projector"):
+                assert a["summary"]["checkpoints"][key] == b["summary"]["checkpoints"][key]
     spatial_vla = [r["summary"]["checkpoints"]["spatial_pro"] for r in results if r["suite"] == "Spatial"]
     assert spatial_vla.count(spatial_vla[0]) == len(spatial_vla)
 
     DEST.mkdir(parents=True)
     columns = ["suite", "lambda", "arm", "success_episodes", "total_episodes", "success_rate",
                "agent_bpp", "wrist_bpp", "two_view_mean_bpp", "agent_psnr_db", "wrist_psnr_db",
-               "hpcm_sha256", "adapter_sha256", "summary_sha256", "episode_results_sha256", "source"]
+               "hpcm_sha256", "adapter_sha256", "vla_model_sha256", "action_head_sha256",
+               "proprio_projector_sha256", "summary_sha256", "episode_results_sha256", "source"]
     rows = []
     for r in results:
         s = r["summary"]
         bpp = s["mean_actual_bpp"]
         psnr = s.get("mean_psnr_db") or {}
+        checkpoints = s["checkpoints"]
+        if r["suite"] == "Spatial":
+            vla_sha = checkpoints["spatial_pro"]["model.safetensors"]
+            head_sha = checkpoints["spatial_pro"]["action_head--checkpoint.pt"]
+            proprio_sha = checkpoints["spatial_pro"]["proprio_projector--checkpoint.pt"]
+        else:
+            vla_sha = checkpoints["object_pro"]["sha256"]
+            head_sha = checkpoints["action_head"]["sha256"]
+            proprio_sha = checkpoints["proprio_projector"]["sha256"]
         rows.append({"suite": r["suite"], "lambda": r["lambda"], "arm": r["arm"],
                      "success_episodes": s["success_episodes"], "total_episodes": 500,
                      "success_rate": s["success_rate"], "agent_bpp": bpp["agent"],
@@ -91,6 +104,8 @@ def main() -> None:
                      "agent_psnr_db": psnr.get("agent", ""), "wrist_psnr_db": psnr.get("wrist", ""),
                      "hpcm_sha256": s["checkpoints"]["hpcm"]["sha256"],
                      "adapter_sha256": (s["checkpoints"].get("adapter") or {}).get("sha256", ""),
+                     "vla_model_sha256": vla_sha, "action_head_sha256": head_sha,
+                     "proprio_projector_sha256": proprio_sha,
                      "summary_sha256": r["summary_sha256"],
                      "episode_results_sha256": r["episode_results_sha256"],
                      "source": str(r["path"].relative_to(REPO))})
