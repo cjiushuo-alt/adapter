@@ -103,14 +103,15 @@ def main() -> None:
                      "two_view_mean_bpp": (bpp["agent"] + bpp["wrist"]) / 2,
                      "agent_psnr_db": psnr.get("agent", ""), "wrist_psnr_db": psnr.get("wrist", ""),
                      "hpcm_sha256": s["checkpoints"]["hpcm"]["sha256"],
-                     "adapter_sha256": (s["checkpoints"].get("adapter") or {}).get("sha256", ""),
+                     "adapter_sha256": ((s["checkpoints"].get("adapter") or {}).get("sha256", "")
+                                        if r["arm"] == "HPCM3" else ""),
                      "vla_model_sha256": vla_sha, "action_head_sha256": head_sha,
                      "proprio_projector_sha256": proprio_sha,
                      "summary_sha256": r["summary_sha256"],
                      "episode_results_sha256": r["episode_results_sha256"],
                      "source": str(r["path"].relative_to(REPO))})
     with (DEST / "paper_table.csv").open("w", newline="") as stream:
-        writer = csv.DictWriter(stream, fieldnames=columns)
+        writer = csv.DictWriter(stream, fieldnames=columns, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     (DEST / "plot_data.json").write_text(json.dumps(rows, indent=2) + "\n")
